@@ -444,6 +444,78 @@ const Flow = () => {
         }
     }
 
+    const generateCodeForLeaf  = async (cacheKey: string, taskName: string) => {
+        try{
+                setCodeModalOpen(true);
+                setCodeLoading(true);
+                setError("");
+            
+                if (cacheKey && codeCache.has(cacheKey)) {
+                    const cachedCode = codeCache.get(cacheKey)!;
+                    setGeneratedCode(cachedCode);
+                    setCodeLoading(false);
+                    return;
+                } else {
+                    const leafPrompt = `You are a senior software engineer. Generate secure, based on OWASP top 10 and CWEs, code that reflects the task, output ONLY code.
+                    Instructions:
+                    - Implement what is written in the task: ${taskName}.
+                    - Divide the code in logical functions based on functionality.
+                    - Keep code short and focused; avoid placeholders if not necessary.
+                    - Use ${codeLanguage} as programming language.
+                    - Ensure code is clean, well-structured, and follows best practices.
+                    - Make the code secure, following OWASP Top 10 and common CWEs.
+                    - Protect against common vulnerabilities (e.g., SQL injection, XSS).
+                    - If ${codeLanguage} is Java, implement a compilable single class.
+                    - Generate a single file with secure functions.
+                    - If no code is needed, respond with "No code needed for this task."`;
+
+                    const messages = [{ role: "user", content: leafPrompt }];
+
+                    const result = await mistral.chat.complete({
+                    model: DEFAULT_MODEL,
+                    messages: messages as any
+                    });
+
+                    let text = "";
+                    if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+                        const content = result.choices[0].message.content;
+                        if (typeof content === 'string') {
+                            text = content;
+                        } else if (Array.isArray(content)) {
+                            text = content.map(chunk => {
+                                if (typeof chunk === 'string') {
+                                    return chunk;
+                                }
+                                if ('text' in chunk) {
+                                    return chunk.text;
+                                }
+                                return '';
+                            }).join('');
+                        }
+                    }
+                
+                    if (!text) {
+                        text = "Error: No code generated. Please try again.";
+                    }
+                    
+                    setGeneratedCode(text);
+                    setHexagonsWithCode(prev => new Set(prev).add(cacheKey));
+                    setCodeCache(prev => new Map(prev).set(cacheKey, text));
+
+                }
+        } catch (e) {
+            console.error("Mistral API Error:", e);
+            if (e instanceof Error) {
+                setError(`Code generation error: ${e.message}`);
+            } else {
+                setError("An error occurred while generating the code. Please try again.");
+            }
+        }
+        finally {
+            setCodeLoading(false);
+        }
+    }
+
     const generateCodeFromGraph = async (cacheKey?: string) => {
         try {
             setCodeModalOpen(true);
@@ -643,14 +715,13 @@ const Flow = () => {
         );
         
         setHexagonsWithCode(prev => new Set(prev).add(cacheKey));
-        
-        generateCodeFromGraph(cacheKey);
-        
+
+        generateCodeForLeaf(cacheKey, taskName);
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
         }, 100);
-    }, [setNodes, generateCodeFromGraph]);
+    }, [setNodes, generateCodeForLeaf]);
 
     const handleGenerateGraphFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = `${currentGraphIndex}_${nodeId}`;
