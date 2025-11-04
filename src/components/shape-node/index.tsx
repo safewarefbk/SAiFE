@@ -1,6 +1,7 @@
 import {
     Handle,
     NodeResizer,
+    NodeToolbar,
     Position,
     useKeyPress,
     useReactFlow,
@@ -16,6 +17,7 @@ import {useEffect} from "react";
 import useUndoRedo from "@/hooks/useUndoRedo";
 import {fas} from "@fortawesome/free-solid-svg-icons";
 import {library} from "@fortawesome/fontawesome-svg-core";
+import { Code, GitBranch } from "react-feather";
 
 library.add(fas);
 
@@ -152,11 +154,39 @@ const ShapeNode = ({id, selected, data}: any) => {
         setNodes(remainingNodes);
         setEdges(edgesToKeep);
         
-        // Trigger a save to graphs history after deletion
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
         }, 200);
+    };
+
+    const onAggregateCode = () => {
+        const event = new CustomEvent('aggregateCode', {
+            detail: {
+                circleNodeId: id
+            }
+        });
+        window.dispatchEvent(event);
+    };
+
+    const onGenerateCode = () => {
+        const event = new CustomEvent('generateCodeFromHexagon', {
+            detail: {
+                hexagonNodeId: id,
+                taskName: data.contents || "Task"
+            }
+        });
+        window.dispatchEvent(event);
+    };
+
+    const onGenerateGraph = () => {
+        const event = new CustomEvent('generateGraphFromHexagon', {
+            detail: {
+                hexagonNodeId: id,
+                taskName: data.contents || "Task"
+            }
+        });
+        window.dispatchEvent(event);
     };
 
     useEffect(() => {
@@ -171,6 +201,48 @@ const ShapeNode = ({id, selected, data}: any) => {
                 activeColor={color}
                 onDeleteNode={onDeleteNode}
             />
+            {type === "circle" && selected && (
+                <NodeToolbar 
+                    position={Position.Top}
+                    offset={10}
+                    className="nodrag"
+                >
+                    <button
+                        onClick={onAggregateCode}
+                        className="flex items-center gap-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors shadow-md"
+                        title="Aggregate code from child tasks"
+                    >
+                        <Code size={16} />
+                        <span>Aggregate Code</span>
+                    </button>
+                </NodeToolbar>
+            )}
+            {type === "hexagon" && selected && (
+                <NodeToolbar 
+                    position={Position.Top}
+                    offset={10}
+                    className="nodrag"
+                >
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onGenerateCode}
+                            className="flex items-center gap-1 px-3 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 transition-colors shadow-md"
+                            title={data.hasCode ? "Show generated code" : "Generate code for this task"}
+                        >
+                            <Code size={16} />
+                            <span>{data.hasCode ? "Show Code" : "Generate Code"}</span>
+                        </button>
+                        <button
+                            onClick={onGenerateGraph}
+                            className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors shadow-md"
+                            title={data.hasGraph ? "Navigate to sub-graph" : "Generate sub-graph for this task"}
+                        >
+                            <GitBranch size={16} />
+                            <span>{data.hasGraph ? "Show Graph" : "Generate Graph"}</span>
+                        </button>
+                    </div>
+                </NodeToolbar>
+            )}
             <NodeResizer
                 color={color}
                 keepAspectRatio={shiftKeyPressed}

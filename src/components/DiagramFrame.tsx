@@ -43,8 +43,6 @@ import {Menu} from "./Menu";
 import CodeModal from "@components/CodeModal/CodeModal";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import ProjectModal from "@components/ProjectModal/Modal";
-import type { Node, NodeMouseHandler } from "@xyflow/react";
-import HexagonTooltip from "@components/HexagonTooltip/HexagonTooltip";
 
 const nodeTypes: NodeTypes = {
     shape: ShapeNode,
@@ -164,14 +162,13 @@ const Flow = () => {
     const [codeSessions, setCodeSessions] = useState<Array<{role: "user" | "assistant", content: string}>>([]);
     const [codeLanguage, setCodeLanguage] = useState<string>("Python");
     const diagram = useDiagram();
-    const { setNodes } = diagram.useReactFlow();
+    const { setNodes, getNodes, getEdges } = diagram.useReactFlow();
     const {getSnapshotJson, takeSnapshot} = useUndoRedo();
     const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(false);
     const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState<boolean>(false);
     const [width] = useWindowSize();
     const [isModalOpen, setIsModalOpen] = useState(true);
     const [originalDescription, setOriginalDescription] = useState<string>("");
-    const [includeNonFunctionalState, setIncludeNonFunctionalState] = useState<boolean>(false);
     const themeHook = useTheme();
     const GeminiApiKey = process.env.NEXT_PUBLIC_API_KEY;
     if (!GeminiApiKey) {
@@ -186,21 +183,12 @@ const Flow = () => {
     const [codeModalOpen, setCodeModalOpen] = useState(false);
     const [generatedCode, setGeneratedCode] = useState<string>("");
     const [codeLoading, setCodeLoading] = useState(false);
-    const [firstGeminiResult, setFirstGeminiResult] = useState<string>("");
-    const [originalPrompt, setOriginalPrompt] = useState<string>("");
     const [graphIndex, setGraphIndex] = useState<number>(-1);
     const graphIndexRef = useRef<number>(-1);
     const graphsHistory = useRef<string[]>([]);
     const [secondRequest, setSecondRequest] = useState<boolean>(false);
     const [thinking, setThinking] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
-    const [hexagonTooltip, setHexagonTooltip] = useState<{
-        nodeId: string;
-        taskName: string;
-        position: { x: number; y: number };
-        graphIndex: number;
-    } | null>(null);
-    const [hexagonsWithCode, setHexagonsWithCode] = useState<Set<string>>(new Set());
     const [codeCache, setCodeCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
     const model = genAI.getGenerativeModel({
@@ -228,6 +216,7 @@ const Flow = () => {
     const ThinkingIndicator = () => {
         const [dots, setDots] = useState('');
         
+        // Animation for the thinking dots while AI is processing
         useEffect(() => {
             if (!thinking) return;
             
@@ -277,7 +266,10 @@ const Flow = () => {
                     </p>
                     <div className="flex justify-end">
                         <button 
-                            onClick={() => setError("")}
+                            onClick={() => {
+                                setError("");
+                                setIsModalOpen(true);
+                            }}
                             className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
                         >
                             OK
@@ -295,7 +287,6 @@ const Flow = () => {
         setError("");
         setIsModalOpen(false);
         setOriginalDescription(description);
-        setIncludeNonFunctionalState(includeNonFunctional);
         const detectedLanguage = detectProgrammingLanguage(description);
         setCodeLanguage(detectedLanguage);
         const nonFunctionalInstruction = includeNonFunctional
@@ -328,6 +319,7 @@ const Flow = () => {
                     - Every other node must have at least one parent.
                     - Each hexagon (task) must connect to a circle.
                     - Each round-rectangle (soft goal) must connect to a circle or a hexagon.
+                    - A circle must be connected to at least two hexagons (tasks) otherwise just use one hexagon.
                 2. Connections:
                     - No duplicate edges between two nodes.
                     - Only edges to soft goals MUST be dotted.
@@ -410,7 +402,6 @@ const Flow = () => {
                 ]
                 }
                 Output only the JSON, no explanations.`;
-        setOriginalPrompt(originalPrompt);
         
         try {
             const chatSession = model.startChat({
@@ -420,7 +411,6 @@ const Flow = () => {
 
             const result = await chatSession.sendMessage(originalPrompt);
             const responseText = result.response.text();
-            setFirstGeminiResult(responseText);
             
             setChatSessions(prev => ({
                 ...prev,
@@ -439,11 +429,13 @@ const Flow = () => {
             }
         } catch (e) {
             setError("An error occurred while generating the diagram. Please try again.");
+
         } finally {
             setThinking(false);
         }
     }
 
+    // function to generate code for a single leaf node (hexagon)
     const generateCodeForLeaf  = async (cacheKey: string, taskName: string) => {
         try{
                 setCodeModalOpen(true);
@@ -499,7 +491,6 @@ const Flow = () => {
                     }
                     
                     setGeneratedCode(text);
-                    setHexagonsWithCode(prev => new Set(prev).add(cacheKey));
                     setCodeCache(prev => new Map(prev).set(cacheKey, text));
 
                 }
@@ -516,50 +507,112 @@ const Flow = () => {
         }
     }
 
-    const generateCodeFromGraph = async (cacheKey?: string) => {
+    const aggregateCode = async (circleNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
-            setCodeModalOpen(true);
-            setCodeLoading(true);
-            setError("");
+            const cacheKey = `${currentGraphIndex}_${circleNodeId}`;
             
-            if (cacheKey && codeCache.has(cacheKey)) {
+            if (codeCache.has(cacheKey)) {
+                console.log(`Using cached aggregated code for circle: ${cacheKey}`);
                 const cachedCode = codeCache.get(cacheKey)!;
+                setCodeModalOpen(true);
                 setGeneratedCode(cachedCode);
                 setCodeLoading(false);
-                return;
+                return true;
             }
             
-            const graphJson = getSnapshotJson();
-            const codePrompt = `You are a senior software engineer. Given this requirements graph in JSON with nodes and edges, and this description: ${originalDescription} generate secure, based on OWASP top 10 and CWEs, code that reflects the current model, output ONLY code.
-                Graph JSON:
-                ${graphJson}
-
-                Instructions:
-                - Implement what is written in the graph, knowing that every code generated must work together to form a complete software system.
-                - Divide the code in logical functions based on tasks and sub-goals.
-                - Keep code short and focused; avoid placeholders if not necessary.
-                - Use ${codeLanguage} as programming language.
-                - Ensure code is clean, well-structured, and follows best practices.
-                - Make the code secure, following OWASP Top 10 and common CWEs.
-                - Protect against common vulnerabilities (e.g., SQL injection, XSS).
-                - If ${codeLanguage} is Java, implement a runnable single class.
-                - Generate a single file with secure functions.
-                - The code MUST be consistent with other previously generated code.
-                - If no code is needed, respond with "No code needed for this model."
-
-                VERY IMPORTANT:
-                - Output ONLY the code, NO explanations.
-                - Do not implement already implemented functions, you MUST include code snippets from previous completions.`;
-
-                
-            const currentHistory = getCodeHistory();
-
-            const messages = currentHistory.length > 0
-                ? [...currentHistory, { role: "user", content: codePrompt }]
-                : [
-                    { role: "user", content: codePrompt }
-                ];
+            const edges = getEdges();
+            const nodes = getNodes();
             
+            const findCodeChildren = (nodeId: string, visited = new Set<string>()): string[] => {
+                if (visited.has(nodeId)) return [];
+                visited.add(nodeId);
+                
+                const childEdges = edges.filter(edge => edge.target === nodeId);
+                const childNodeIds = childEdges.map(edge => edge.source);
+                
+                const codeNodeIds: string[] = [];
+                
+                for (const childId of childNodeIds) {
+                    const childNode = nodes.find(n => n.id === childId);
+                    if (!childNode) continue;
+                    
+                    if (childNode.data?.type === "hexagon" || childNode.data?.type === "circle") {
+                        codeNodeIds.push(childId);
+                    } else if (childNode.data?.type === "capsule") {
+                        const nestedNodes = findCodeChildren(childId, visited);
+                        codeNodeIds.push(...nestedNodes);
+                    }
+                }
+                
+                return codeNodeIds;
+            };
+            
+            const codeNodeIds = findCodeChildren(circleNodeId);
+            const childNodes = nodes.filter(node => codeNodeIds.includes(node.id));
+            
+            if (childNodes.length === 0) {
+                setError("No children with code found for this circle. Generate code for child tasks first.");
+                return false;
+            }
+            
+            
+            
+            const childrenCode: Array<{taskName: string, code: string, type: string}> = [];
+            let missingCode = false;
+            
+            for (const childNode of childNodes) {
+                const childCacheKey = `${currentGraphIndex}_${childNode.id}`;
+                
+                if (codeCache.has(childCacheKey)) {
+                    const code = codeCache.get(childCacheKey)!;
+                    const taskName = String(childNode.data.contents || "Unknown");
+                    const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
+                    childrenCode.push({ taskName, code, type: nodeType });
+                } else {
+                    missingCode = true;
+                    console.warn(`Missing code for child node: ${childNode.id} (type: ${childNode.data?.type})`);
+                }
+            }
+            
+            if (missingCode) {
+                setError("Some children don't have generated code yet. Please generate/aggregate code for all children first.");
+                setCodeLoading(false);
+                return false;
+            }
+
+            setCodeModalOpen(true);
+            setCodeLoading(true);
+            
+            const circleNode = nodes.find(n => n.id === circleNodeId);
+            const circleGoal = circleNode?.data?.contents || "Goal";
+            
+            const codeSnippets = childrenCode.map((child, index) => 
+                `\n--- ${child.type} ${index + 1}: ${child.taskName} ---\n${child.code}`
+            ).join('\n\n');
+            
+            const aggregationPrompt = `You are a senior software engineer. You have been given code snippets from multiple sub-components (tasks and/or goals) that together implement the higher-level functional goal: "${circleGoal}".
+
+Your task is to integrate and aggregate these code snippets into a cohesive, well-structured implementation that represents the complete functional goal.
+
+Code snippets from sub-components:
+${codeSnippets}
+
+Instructions:
+- Integrate all code snippets into a unified implementation.
+- Remove duplications and resolve any conflicts between snippets.
+- Ensure the code flows logically and all parts work together.
+- Use ${codeLanguage} as programming language.
+- Keep the code clean, maintainable, and following best practices.
+- Make the code secure, following OWASP Top 10 and common CWEs.
+- If ${codeLanguage} is Java, create a compilable single class or properly structured classes.
+- Ensure all sub-component functionalities are preserved in the integrated code.
+- The code should be then applicable for this project: ${originalDescription}.
+
+VERY IMPORTANT:
+- Output ONLY the integrated code, NO explanations.
+- Do NOT add comments like "// code from task X" - integrate naturally.`;
+
+            const messages = [{ role: "user", content: aggregationPrompt }];
             const result = await mistral.chat.complete({
                 model: DEFAULT_MODEL,
                 messages: messages as any
@@ -572,40 +625,29 @@ const Flow = () => {
                     text = content;
                 } else if (Array.isArray(content)) {
                     text = content.map(chunk => {
-                        if (typeof chunk === 'string') {
-                            return chunk;
-                        }
-                        if ('text' in chunk) {
-                            return chunk.text;
-                        }
+                        if (typeof chunk === 'string') return chunk;
+                        if ('text' in chunk) return chunk.text;
                         return '';
                     }).join('');
                 }
             }
             
             if (!text) {
-                text = "Error: No code generated. Please try again.";
+                text = "Error: No aggregated code generated. Please try again.";
             }
             
             setGeneratedCode(text);
-
-            setCodeSessions([
-                ...currentHistory,
-                { role: "user", content: codePrompt }, 
-                { role: "assistant", content: text }
-            ]);
+            setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            return true;
             
-            if (cacheKey) {
-                setCodeCache(prev => new Map(prev).set(cacheKey, text));
-            }
-
         } catch (e) {
             console.error("Mistral API Error:", e);
             if (e instanceof Error) {
-                setError(`Code generation error: ${e.message}`);
+                setError(`Code aggregation error: ${e.message}`);
             } else {
-                setError("An error occurred while generating the code. Please try again.");
+                setError("An error occurred while aggregating the code. Please try again.");
             }
+            return false;
         } finally {
             setCodeLoading(false);
         }
@@ -680,48 +722,17 @@ const Flow = () => {
         "editable-edge": EditableEdgeWrapper,
     };
 
-    const handleNodeMouseEnter: NodeMouseHandler = useCallback((event, node: Node) => {
-        if (node?.data?.type === "hexagon" && originalDescription) {
-            const taskName = String(node.data.contents);
-            const rect = (event.target as HTMLElement).getBoundingClientRect();
-            setHexagonTooltip({
-                nodeId: node.id,
-                taskName,
-                position: {
-                    x: rect.left + rect.width / 2,
-                    y: rect.top
-                },
-                graphIndex: graphIndex
-            });
-        }
-    }, [originalDescription, graphIndex]);
-
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = `${currentGraphIndex}_${nodeId}`;
         
-        setNodes((nodes) =>
-            nodes.map((node) => {
-                if (node.id === nodeId) {
-                    return {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            color: "#F7931E",
-                        },
-                    };
-                }
-                return node;
-            })
-        );
-        
-        setHexagonsWithCode(prev => new Set(prev).add(cacheKey));
-
         generateCodeForLeaf(cacheKey, taskName);
+        
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
-        }, 100);
-    }, [setNodes, generateCodeForLeaf]);
+        }, 200);
+    }, [generateCodeForLeaf]);
+
 
     const handleGenerateGraphFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = `${currentGraphIndex}_${nodeId}`;
@@ -736,14 +747,17 @@ const Flow = () => {
         }
     }, [graphCache, generateTaskDiagram, diagram]);
 
-    const nextGraph = () => {
-        if (graphIndex < graphsHistory.current.length - 1) {
-            const newIndex = graphIndex + 1;
-            setGraphIndex(newIndex);
-            const graph = graphsHistory.current[newIndex];
-            diagram.uploadJson(graph);
+
+    const handleAggregateCodeFromCircle = useCallback(async (circleNodeId: string, currentGraphIndex: number) => {
+        const success = await aggregateCode(circleNodeId, currentGraphIndex);
+        if (success) {
+            setTimeout(() => {
+                const event = new CustomEvent('saveGraphToHistory');
+                window.dispatchEvent(event);
+            }, 200);
         }
-    };
+    }, [aggregateCode]);
+
 
     const previousGraph = () => {
         if (graphIndex > 0) {
@@ -762,6 +776,7 @@ const Flow = () => {
         }
     };
     
+    // Event listener to save the current graph state to history
     useEffect(() => {
         const handleSaveGraphToHistory = () => {
             const currentGraph = getSnapshotJson();
@@ -779,16 +794,96 @@ const Flow = () => {
         };
     }, [getSnapshotJson]);
     
+    // Event listener for "Aggregate Code" button clicks on circle nodes
+    useEffect(() => {
+        const handleAggregateCodeEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ circleNodeId: string }>;
+            const { circleNodeId } = customEvent.detail;
+            const currentGraphIndex = graphIndexRef.current;
+            handleAggregateCodeFromCircle(circleNodeId, currentGraphIndex);
+        };
+        
+        window.addEventListener('aggregateCode', handleAggregateCodeEvent);
+        
+        return () => {
+            window.removeEventListener('aggregateCode', handleAggregateCodeEvent);
+        };
+    }, [handleAggregateCodeFromCircle]);
+    
+    // Event listener for "Generate Code" button clicks on hexagon nodes
+    useEffect(() => {
+        const handleGenerateCodeEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ hexagonNodeId: string; taskName: string }>;
+            const { hexagonNodeId, taskName } = customEvent.detail;
+            const currentGraphIndex = graphIndexRef.current;
+            handleGenerateCodeFromTask(taskName, hexagonNodeId, currentGraphIndex);
+        };
+        
+        window.addEventListener('generateCodeFromHexagon', handleGenerateCodeEvent);
+        
+        return () => {
+            window.removeEventListener('generateCodeFromHexagon', handleGenerateCodeEvent);
+        };
+    }, [handleGenerateCodeFromTask]);
+    
+    // Event listener for "Generate Graph" button clicks on hexagon nodes
+    useEffect(() => {
+        const handleGenerateGraphEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ hexagonNodeId: string; taskName: string }>;
+            const { hexagonNodeId, taskName } = customEvent.detail;
+            const currentGraphIndex = graphIndexRef.current;
+            handleGenerateGraphFromTask(taskName, hexagonNodeId, currentGraphIndex);
+        };
+        
+        window.addEventListener('generateGraphFromHexagon', handleGenerateGraphEvent);
+        
+        return () => {
+            window.removeEventListener('generateGraphFromHexagon', handleGenerateGraphEvent);
+        };
+    }, [handleGenerateGraphFromTask]);
+    
+    
+    // Keeps the graphIndexRef in sync with the graphIndex state
     useEffect(() => {
         graphIndexRef.current = graphIndex;
     }, [graphIndex]);
     
+    // Cleanup function that runs when the component unmounts
     useEffect(() => {
         return () => {
             graphsHistory.current = [];
             setGraphIndex(-1);
         };
     }, []);
+    
+    // Updates all hexagon and circle nodes when codeCache or graphCache changes
+    useEffect(() => {
+        setNodes((nodes) =>
+            nodes.map((node) => {
+                if (node.data?.type === "hexagon" || node.data?.type === "circle") {
+                    const cacheKey = `${graphIndex}_${node.id}`;
+                    const hasCode = codeCache.has(cacheKey);
+                    const hasGraph = graphCache.has(cacheKey);
+                    
+                    let color = node.data.color;
+                    if (hasCode) {
+                        color = "#F7931E";
+                    }
+                    
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            hasCode,
+                            hasGraph,
+                            color,
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+    }, [codeCache, graphCache, graphIndex, setNodes]);
 
     return (
         <div className="w-full h-full">
@@ -846,7 +941,6 @@ const Flow = () => {
                                 onSelectionDragStart={diagram.onSelectionDragStart}
                                 onSelectionDragStop={diagram.onSelectionDragStop}
                                 onNodesDelete={diagram.onNodesDelete}
-                                onNodeMouseEnter={handleNodeMouseEnter}
                                 onEdgesDelete={diagram.onEdgesDelete}
                                 onEdgeClick={diagram.onEdgeClick}
                                 elevateEdgesOnSelect
@@ -950,18 +1044,6 @@ const Flow = () => {
                 code={generatedCode}
                 isLoading={codeLoading}
             />
-            {hexagonTooltip && (
-                <HexagonTooltip
-                    nodeId={hexagonTooltip.nodeId}
-                    taskName={hexagonTooltip.taskName}
-                    position={hexagonTooltip.position}
-                    onGenerateCode={(taskName) => handleGenerateCodeFromTask(taskName, hexagonTooltip.nodeId, hexagonTooltip.graphIndex)}
-                    onGenerateGraph={(taskName) => handleGenerateGraphFromTask(taskName, hexagonTooltip.nodeId, hexagonTooltip.graphIndex)}
-                    onClose={() => setHexagonTooltip(null)}
-                    hasCode={codeCache.has(`${hexagonTooltip.graphIndex}_${hexagonTooltip.nodeId}`)}
-                    hasGraph={graphCache.has(`${hexagonTooltip.graphIndex}_${hexagonTooltip.nodeId}`)}
-                />
-            )}
         </div>
     );
 };
