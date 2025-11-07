@@ -213,7 +213,7 @@ const ShapeNode = ({id, selected, data}: any) => {
                         title="Aggregate code from child tasks"
                     >
                         <Code size={16} />
-                        <span>Aggregate Code</span>
+                        <span>{data.hasCode ? "Show Code" : "Aggregate Code"}</span>
                     </button>
                 </NodeToolbar>
             )}

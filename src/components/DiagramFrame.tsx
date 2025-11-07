@@ -459,7 +459,8 @@ const Flow = () => {
                     - Protect against common vulnerabilities (e.g., SQL injection, XSS).
                     - If ${codeLanguage} is Java, implement a compilable single class.
                     - Generate a single file with secure functions.
-                    - If no code is needed, respond with "No code needed for this task."`;
+                    - If no code is needed, respond with "No code needed for this task.
+                    - Always use the name of the task for naming the class."`;
 
                     const messages = [{ role: "user", content: leafPrompt }];
 
