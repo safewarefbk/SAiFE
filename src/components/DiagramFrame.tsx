@@ -268,7 +268,6 @@ const Flow = () => {
                         <button 
                             onClick={() => {
                                 setError("");
-                                setIsModalOpen(true);
                             }}
                             className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
                         >
@@ -429,7 +428,7 @@ const Flow = () => {
             }
         } catch (e) {
             setError("An error occurred while generating the diagram. Please try again.");
-
+            setIsModalOpen(true);
         } finally {
             setThinking(false);
         }
