@@ -608,7 +608,7 @@ const Flow = () => {
                         if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
                             codeNodeIds.push(edge.source);
                         } 
-                        else if (childNode.data?.type === "capsule") {
+                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
                             queue.push(edge.source);
                         }
                     }
@@ -760,7 +760,7 @@ VERY IMPORTANT:
                         if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
                             codeNodeIds.push(edge.source);
                         } 
-                        else if (childNode.data?.type === "capsule") {
+                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
                             queue.push(edge.source);
                         }
                     }
@@ -994,7 +994,7 @@ VERY IMPORTANT:
             const rootNodes = findRootNode();
             const isRootNode = rootNodes.some(node => node.id === circleNodeId);
 
-            if (isRootNode) {
+            if (isRootNode && currentGraphIndex === 0) {
                 handleAggregateCodeFromRoot(circleNodeId, currentGraphIndex);
             } else {
                 handleAggregateCodeFromCircle(circleNodeId, currentGraphIndex);
