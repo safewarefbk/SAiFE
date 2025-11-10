@@ -191,6 +191,7 @@ const Flow = () => {
     const [error, setError] = useState<string>("");
     const [codeCache, setCodeCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
+    const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
     const model = genAI.getGenerativeModel({
         model: "gemini-2.5-pro",
     });
@@ -280,7 +281,14 @@ const Flow = () => {
     };
 
 
+   const findRootNode = () => {
+    const nodes = getNodes();
+    const edges = getEdges();
+    const circles = nodes.filter(n => n.data?.type === "circle");
+    return nodes.filter(node => !edges.some(edge => edge.source === node.id));
+};
 
+    // Function to generate the first graph of the project
     const handleModalSubmit = async (description: string, includeNonFunctional: boolean) => {
         setThinking(true);
         setError("");
@@ -434,9 +442,75 @@ const Flow = () => {
         }
     }
 
+    // Function to generate a graph for a single specific task
+    const generateTaskDiagram = async (taskName: string, nodeId?: string, currentGraphIndex?: number) => {
+        setThinking(true);
+        setError("");
+        
+        if(taskName == "Task") {
+            setError("Task name cannot be empty.");
+            setThinking(false);
+            return;
+        }
+
+        const taskPrompt = `Now, focus ONLY on the task: ${taskName}. Generate a smaller requirements graph than the previous one, the number of nodes MUST be reduced, for this specific task, keeping the context of the original description, and using the same exact rules.
+        NEVER include nodes that are not related to this specific task, or that are already implemented in previous graphs. Always use the name of the task for the root node.
+        \nOutput only the JSON, no explanations.`;
+
+        try {
+            const currentHistory = getChatHistory("main");
+            const chatSession = model.startChat({
+                generationConfig,
+                history: currentHistory
+            });
+            console.log(currentHistory);
+            const result = await chatSession.sendMessage(taskPrompt);
+            const responseText = result.response.text();
+            console.log(responseText);
+            setChatSessions(prev => ({
+                ...prev,
+                ["main"]: [
+                    ...currentHistory,
+                    { role: "user", parts: [{ text: taskPrompt }] },
+                    { role: "model", parts: [{ text: responseText }] }
+                ]
+            }));
+
+            if (JSON.parse(responseText)) {
+                diagram.uploadJson(responseText);
+                setSecondRequest(true);
+                graphsHistory.current.push(responseText);
+                const newGraphIndex = graphsHistory.current.length - 1;
+                setGraphIndex(newGraphIndex);
+                
+                if (nodeId) {
+                    setGraphCache(prev => new Map(prev).set(nodeId, newGraphIndex));
+                    
+                    // Save the parent-child relationship
+                    if (currentGraphIndex !== undefined) {
+                        setGraphParentMap(prev => new Map(prev).set(newGraphIndex, {
+                            parentGraphIndex: currentGraphIndex,
+                            parentNodeId: nodeId.replace(`${currentGraphIndex}_`, '')
+                        }));
+                    }
+                }
+            }
+        } catch (e) {
+            setError("An error occurred while generating the task diagram. Please try again.");
+        } finally {
+            setThinking(false);
+        }
+    };
+
     // function to generate code for a single leaf node (hexagon)
     const generateCodeForLeaf  = async (cacheKey: string, taskName: string) => {
         try{
+                if(taskName == "Task") {
+                    setError("Task name cannot be empty.");
+                    setThinking(false);
+                    return;
+                }
+
                 setCodeModalOpen(true);
                 setCodeLoading(true);
                 setError("");
@@ -507,6 +581,7 @@ const Flow = () => {
         }
     }
 
+    // Function to aggregate the code of the direct children inside the circles
     const aggregateCode = async (circleNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
             const cacheKey = `${currentGraphIndex}_${circleNodeId}`;
@@ -523,31 +598,35 @@ const Flow = () => {
             const edges = getEdges();
             const nodes = getNodes();
             
-            const findCodeChildren = (nodeId: string, visited = new Set<string>()): string[] => {
-                if (visited.has(nodeId)) return [];
-                visited.add(nodeId);
-                
-                const childEdges = edges.filter(edge => edge.target === nodeId);
-                const childNodeIds = childEdges.map(edge => edge.source);
-                
+            const findDirectCodeChildren = (nodeId: string): string[] => {
+                const queue: string[] = [nodeId];
+                const visited = new Set<string>();
                 const codeNodeIds: string[] = [];
                 
-                for (const childId of childNodeIds) {
-                    const childNode = nodes.find(n => n.id === childId);
-                    if (!childNode) continue;
+                while (queue.length > 0) {
+                    const currentId = queue.shift()!;
+                    if (visited.has(currentId)) continue;
+                    visited.add(currentId);
                     
-                    if (childNode.data?.type === "hexagon" || childNode.data?.type === "circle") {
-                        codeNodeIds.push(childId);
-                    } else if (childNode.data?.type === "capsule") {
-                        const nestedNodes = findCodeChildren(childId, visited);
-                        codeNodeIds.push(...nestedNodes);
+                    const childEdges = edges.filter(edge => edge.target === currentId);
+                    
+                    for (const edge of childEdges) {
+                        const childNode = nodes.find(n => n.id === edge.source);
+                        if (!childNode) continue;
+                        
+                        if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
+                            codeNodeIds.push(edge.source);
+                        } 
+                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
+                            queue.push(edge.source);
+                        }
                     }
                 }
                 
                 return codeNodeIds;
             };
-            
-            const codeNodeIds = findCodeChildren(circleNodeId);
+
+            const codeNodeIds = findDirectCodeChildren(circleNodeId);
             const childNodes = nodes.filter(node => codeNodeIds.includes(node.id));
             
             if (childNodes.length === 0) {
@@ -638,6 +717,20 @@ VERY IMPORTANT:
             
             setGeneratedCode(text);
             setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            
+            // If this is a subgraph and we're aggregating the root circle, copy to parent
+            if (graphParentMap.has(currentGraphIndex)) {
+                const rootNodes = findRootNode();
+                const isRootNode = rootNodes.some(node => node.id === circleNodeId);
+                
+                if (isRootNode) {
+                    const parentInfo = graphParentMap.get(currentGraphIndex)!;
+                    const parentCacheKey = `${parentInfo.parentGraphIndex}_${parentInfo.parentNodeId}`;
+                    setCodeCache(prev => new Map(prev).set(parentCacheKey, text));
+                    console.log(`Code copied from subgraph root circle to parent node: ${parentCacheKey}`);
+                }
+            }
+            
             return true;
             
         } catch (e) {
@@ -653,48 +746,159 @@ VERY IMPORTANT:
         }
     };
 
-    const generateTaskDiagram = async (taskName: string, nodeId?: string) => {
-        setThinking(true);
-        setError("");
-
-        const taskPrompt = `Now, focus ONLY on the task: ${taskName}. Generate a smaller requirements graph than the previous one, the number of nodes MUST be reduced, for this specific task, keeping the context of the original description, and using the same exact rules.
-        NEVER include nodes that are not related to this specific task, or that are already implemented in previous graphs.
-        \nOutput only the JSON, no explanations.`;
-
+    // Function to aggregate the code of the entire graph from the root node
+    const aggregateCodeFromRoot = async (rootNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
-            const currentHistory = getChatHistory("main");
-            const chatSession = model.startChat({
-                generationConfig,
-                history: currentHistory
-            });
-            console.log(currentHistory);
-            const result = await chatSession.sendMessage(taskPrompt);
-            const responseText = result.response.text();
-            console.log(responseText);
-            setChatSessions(prev => ({
-                ...prev,
-                ["main"]: [
-                    ...currentHistory,
-                    { role: "user", parts: [{ text: taskPrompt }] },
-                    { role: "model", parts: [{ text: responseText }] }
-                ]
-            }));
-
-            if (JSON.parse(responseText)) {
-                diagram.uploadJson(responseText);
-                setSecondRequest(true);
-                graphsHistory.current.push(responseText);
-                const newGraphIndex = graphsHistory.current.length - 1;
-                setGraphIndex(newGraphIndex);
+            const cacheKey = `${currentGraphIndex}_${rootNodeId}`;
+            
+            if (codeCache.has(cacheKey)) {
+                console.log(`Using cached aggregated code for root: ${cacheKey}`);
+                const cachedCode = codeCache.get(cacheKey)!;
+                setCodeModalOpen(true);
+                setGeneratedCode(cachedCode);
+                setCodeLoading(false);
+                return true;
+            }
+            
+            const edges = getEdges();
+            const nodes = getNodes();
+            
+            // Get first level children
+            const findDirectCodeChildren = (nodeId: string): string[] => {
+                const queue: string[] = [nodeId];
+                const visited = new Set<string>();
+                const codeNodeIds: string[] = [];
                 
-                if (nodeId) {
-                    setGraphCache(prev => new Map(prev).set(nodeId, newGraphIndex));
+                while (queue.length > 0) {
+                    const currentId = queue.shift()!;
+                    if (visited.has(currentId)) continue;
+                    visited.add(currentId);
+                    
+                    const childEdges = edges.filter(edge => edge.target === currentId);
+                    
+                    for (const edge of childEdges) {
+                        const childNode = nodes.find(n => n.id === edge.source);
+                        if (!childNode) continue;
+                        
+                        if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
+                            codeNodeIds.push(edge.source);
+                        } 
+                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
+                            queue.push(edge.source);
+                        }
+                    }
+                }
+                
+                return codeNodeIds;
+            };
+            
+            const codeNodeIds = findDirectCodeChildren(rootNodeId);
+            const childNodes = nodes.filter(node => codeNodeIds.includes(node.id));
+            
+            if (childNodes.length === 0) {
+                setError("No children with code found for the root node. Generate code for child tasks first.");
+                return false;
+            }
+            
+            const childrenCode: Array<{taskName: string, code: string, type: string}> = [];
+            let missingCode = false;
+            
+            for (const childNode of childNodes) {
+                const childCacheKey = `${currentGraphIndex}_${childNode.id}`;
+                
+                if (codeCache.has(childCacheKey)) {
+                    const code = codeCache.get(childCacheKey)!;
+                    const taskName = String(childNode.data.contents || "Unknown");
+                    const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
+                    childrenCode.push({ taskName, code, type: nodeType });
+                } else {
+                    missingCode = true;
+                    console.warn(`Missing code for child node: ${childNode.id} (type: ${childNode.data?.type})`);
                 }
             }
+            
+            if (missingCode) {
+                setError("Some children don't have generated code yet. Please generate/aggregate code for all children first.");
+                setCodeLoading(false);
+                return false;
+            }
+
+            setCodeModalOpen(true);
+            setCodeLoading(true);
+            
+            const rootNode = nodes.find(n => n.id === rootNodeId);
+            const rootGoal = rootNode?.data?.contents || "Main Goal";
+            
+            const codeSnippets = childrenCode.map((child, index) => 
+                `\n--- ${child.type} ${index + 1}: ${child.taskName} ---\n${child.code}`
+            ).join('\n\n');
+            
+            const rootAggregationPrompt = `You are a senior software architect. You have been given code snippets from ALL major components for the "${rootGoal}".
+
+Your task is to create a COMPLETE, PRODUCTION-READY implementation of the entire project by integrating all the code snippets.
+
+Project Description: ${originalDescription}
+
+Code snippets from all major components:
+${codeSnippets}
+
+Instructions:
+- Integrate all code snippets into a cohesive, well-architected application, do not add any new code.
+- Remove duplications and resolve any conflicts between components.
+- Ensure proper separation of concerns and modular design.
+- Add necessary main entry points, configuration, and initialization code.
+- Use ${codeLanguage} as programming language.
+- Follow industry best practices for project structure and organization.
+- Make the code secure, following OWASP Top 10 and common CWEs.
+- Ensure all security requirements are implemented (authentication, authorization, encryption, etc.).
+- If ${codeLanguage} is Java, create a complete application with proper package structure.
+- If ${codeLanguage} is Python, include necessary imports and a main entry point.
+- If ${codeLanguage} is JavaScript/TypeScript, create a complete application structure.
+- Add error handling, logging, and proper resource management.
+
+VERY IMPORTANT:
+- Output ONLY the complete integrated code, NO explanations.
+- Do NOT add placeholder comments like "// add more code here".
+- If multiple files are needed, clearly separate them with comments like "// ===== FILE: filename.ext =====".`;
+
+            const messages = [{ role: "user", content: rootAggregationPrompt }];
+            const result = await mistral.chat.complete({
+                model: DEFAULT_MODEL,
+                messages: messages as any
+            });
+
+            let text = "";
+            if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+                const content = result.choices[0].message.content;
+                if (typeof content === 'string') {
+                    text = content;
+                } else if (Array.isArray(content)) {
+                    text = content.map(chunk => {
+                        if (typeof chunk === 'string') return chunk;
+                        if ('text' in chunk) return chunk.text;
+                        return '';
+                    }).join('');
+                }
+            }
+            
+            if (!text) {
+                text = "Error: No aggregated code generated. Please try again.";
+            }
+            
+            setGeneratedCode(text);
+            setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            return true;
+            
         } catch (e) {
-            setError("An error occurred while generating the task diagram. Please try again.");
+            console.error("Mistral API Error:", e);
+            if (e instanceof Error) {
+                setError(`Root code aggregation error: ${e.message}`);
+            } else {
+                setError("An error occurred while aggregating the root code. Please try again.");
+            }
+            return false;
         } finally {
-            setThinking(false);
+            setCodeLoading(false);
         }
     };
 
@@ -725,9 +929,12 @@ VERY IMPORTANT:
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = `${currentGraphIndex}_${nodeId}`;
         
-        generateCodeForLeaf(cacheKey, taskName);
-        
         setTimeout(() => {
+        generateCodeForLeaf(cacheKey, taskName);
+        }, 100);
+
+        setTimeout(() => {
+            
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
         }, 200);
@@ -743,7 +950,7 @@ VERY IMPORTANT:
             const graph = graphsHistory.current[cachedGraphIndex];
             diagram.uploadJson(graph);
         } else {
-            generateTaskDiagram(taskName, cacheKey);
+            generateTaskDiagram(taskName, cacheKey, currentGraphIndex);
         }
     }, [graphCache, generateTaskDiagram, diagram]);
 
@@ -757,6 +964,16 @@ VERY IMPORTANT:
             }, 200);
         }
     }, [aggregateCode]);
+
+    const handleAggregateCodeFromRoot = useCallback(async (rootNodeId: string, currentGraphIndex: number) => {
+        const success = await aggregateCodeFromRoot(rootNodeId, currentGraphIndex);
+        if (success) {
+            setTimeout(() => {
+                const event = new CustomEvent('saveGraphToHistory');
+                window.dispatchEvent(event);
+            }, 200);
+        }
+    }, [aggregateCodeFromRoot]);
 
 
     const previousGraph = () => {
@@ -800,7 +1017,14 @@ VERY IMPORTANT:
             const customEvent = event as CustomEvent<{ circleNodeId: string }>;
             const { circleNodeId } = customEvent.detail;
             const currentGraphIndex = graphIndexRef.current;
-            handleAggregateCodeFromCircle(circleNodeId, currentGraphIndex);
+            const rootNodes = findRootNode();
+            const isRootNode = rootNodes.some(node => node.id === circleNodeId);
+
+            if (isRootNode && currentGraphIndex === 0) {
+                handleAggregateCodeFromRoot(circleNodeId, currentGraphIndex);
+            } else {
+                handleAggregateCodeFromCircle(circleNodeId, currentGraphIndex);
+            }
         };
         
         window.addEventListener('aggregateCode', handleAggregateCodeEvent);
@@ -808,7 +1032,7 @@ VERY IMPORTANT:
         return () => {
             window.removeEventListener('aggregateCode', handleAggregateCodeEvent);
         };
-    }, [handleAggregateCodeFromCircle]);
+    }, [handleAggregateCodeFromCircle, handleAggregateCodeFromRoot]);
     
     // Event listener for "Generate Code" button clicks on hexagon nodes
     useEffect(() => {
@@ -929,7 +1153,9 @@ VERY IMPORTANT:
                                 defaultEdgeOptions={defaultEdgeOptions}
                                 connectionLineType={ConnectionLineType.SmoothStep}
                                 connectionMode={ConnectionMode.Loose}
-                                panOnScroll={true}
+                                panOnScroll={false}
+                                panOnDrag={true}
+                                zoomOnScroll={true}
                                 onDrop={diagram.onDrop}
                                 snapToGrid={false}
                                 snapGrid={[10, 10]}
