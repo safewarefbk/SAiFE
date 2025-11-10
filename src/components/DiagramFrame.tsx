@@ -191,6 +191,7 @@ const Flow = () => {
     const [error, setError] = useState<string>("");
     const [codeCache, setCodeCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
+    const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
     const model = genAI.getGenerativeModel({
         model: "gemini-2.5-pro",
     });
@@ -442,7 +443,7 @@ const Flow = () => {
     }
 
     // Function to generate a graph for a single specific task
-    const generateTaskDiagram = async (taskName: string, nodeId?: string) => {
+    const generateTaskDiagram = async (taskName: string, nodeId?: string, currentGraphIndex?: number) => {
         setThinking(true);
         setError("");
         
@@ -453,7 +454,7 @@ const Flow = () => {
         }
 
         const taskPrompt = `Now, focus ONLY on the task: ${taskName}. Generate a smaller requirements graph than the previous one, the number of nodes MUST be reduced, for this specific task, keeping the context of the original description, and using the same exact rules.
-        NEVER include nodes that are not related to this specific task, or that are already implemented in previous graphs.
+        NEVER include nodes that are not related to this specific task, or that are already implemented in previous graphs. Always use the name of the task for the root node.
         \nOutput only the JSON, no explanations.`;
 
         try {
@@ -484,6 +485,14 @@ const Flow = () => {
                 
                 if (nodeId) {
                     setGraphCache(prev => new Map(prev).set(nodeId, newGraphIndex));
+                    
+                    // Save the parent-child relationship
+                    if (currentGraphIndex !== undefined) {
+                        setGraphParentMap(prev => new Map(prev).set(newGraphIndex, {
+                            parentGraphIndex: currentGraphIndex,
+                            parentNodeId: nodeId.replace(`${currentGraphIndex}_`, '')
+                        }));
+                    }
                 }
             }
         } catch (e) {
@@ -572,7 +581,7 @@ const Flow = () => {
         }
     }
 
-    // Function to aggregate the code of the hexagons inside the circles
+    // Function to aggregate the code of the direct children inside the circles
     const aggregateCode = async (circleNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
             const cacheKey = `${currentGraphIndex}_${circleNodeId}`;
@@ -708,6 +717,20 @@ VERY IMPORTANT:
             
             setGeneratedCode(text);
             setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            
+            // If this is a subgraph and we're aggregating the root circle, copy to parent
+            if (graphParentMap.has(currentGraphIndex)) {
+                const rootNodes = findRootNode();
+                const isRootNode = rootNodes.some(node => node.id === circleNodeId);
+                
+                if (isRootNode) {
+                    const parentInfo = graphParentMap.get(currentGraphIndex)!;
+                    const parentCacheKey = `${parentInfo.parentGraphIndex}_${parentInfo.parentNodeId}`;
+                    setCodeCache(prev => new Map(prev).set(parentCacheKey, text));
+                    console.log(`Code copied from subgraph root circle to parent node: ${parentCacheKey}`);
+                }
+            }
+            
             return true;
             
         } catch (e) {
@@ -906,9 +929,12 @@ VERY IMPORTANT:
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = `${currentGraphIndex}_${nodeId}`;
         
-        generateCodeForLeaf(cacheKey, taskName);
-        
         setTimeout(() => {
+        generateCodeForLeaf(cacheKey, taskName);
+        }, 100);
+
+        setTimeout(() => {
+            
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
         }, 200);
@@ -924,7 +950,7 @@ VERY IMPORTANT:
             const graph = graphsHistory.current[cachedGraphIndex];
             diagram.uploadJson(graph);
         } else {
-            generateTaskDiagram(taskName, cacheKey);
+            generateTaskDiagram(taskName, cacheKey, currentGraphIndex);
         }
     }, [graphCache, generateTaskDiagram, diagram]);
 
