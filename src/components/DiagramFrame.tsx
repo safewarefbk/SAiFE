@@ -728,6 +728,7 @@ VERY IMPORTANT:
                     const parentCacheKey = `${parentInfo.parentGraphIndex}_${parentInfo.parentNodeId}`;
                     setCodeCache(prev => new Map(prev).set(parentCacheKey, text));
                     console.log(`Code copied from subgraph root circle to parent node: ${parentCacheKey}`);
+                    console.log(parentInfo);
                 }
             }
             
