@@ -183,6 +183,9 @@ const Flow = () => {
     const [codeModalOpen, setCodeModalOpen] = useState(false);
     const [generatedCode, setGeneratedCode] = useState<string>("");
     const [codeLoading, setCodeLoading] = useState(false);
+    const [currentCodeCacheKey, setCurrentCodeCacheKey] = useState<string>("");
+    const [currentTaskName, setCurrentTaskName] = useState<string>("");
+    const [currentOriginalPrompt, setCurrentOriginalPrompt] = useState<string>("");
     const [graphIndex, setGraphIndex] = useState<number>(-1);
     const graphIndexRef = useRef<number>(-1);
     const graphsHistory = useRef<string[]>([]);
@@ -514,6 +517,8 @@ const Flow = () => {
                 setCodeModalOpen(true);
                 setCodeLoading(true);
                 setError("");
+                setCurrentCodeCacheKey(cacheKey);
+                setCurrentTaskName(taskName);
             
                 if (cacheKey && codeCache.has(cacheKey)) {
                     const cachedCode = codeCache.get(cacheKey)!;
@@ -534,6 +539,8 @@ const Flow = () => {
                     - Generate a single file with secure functions.
                     - If no code is needed, respond with "No code needed for this task.
                     - Always use the name of the task for naming the class."`;
+
+                    setCurrentOriginalPrompt(leafPrompt);
 
                     const messages = [{ role: "user", content: leafPrompt }];
 
@@ -580,6 +587,64 @@ const Flow = () => {
             setCodeLoading(false);
         }
     }
+
+    // Function to regenerate code with additional prompt instructions
+    const regenerateCodeWithPrompt = async (additionalPrompt: string) => {
+        try {
+            setCodeLoading(true);
+            setError("");
+
+            const enhancedPrompt = `${currentOriginalPrompt}\n\nAdditional instructions for this regeneration:\n${additionalPrompt}\n\nPlease regenerate the code incorporating these additional instructions while maintaining the original requirements. Output ONLY code.`;
+
+            const messages = [{ role: "user", content: enhancedPrompt }];
+
+            const result = await mistral.chat.complete({
+                model: DEFAULT_MODEL,
+                messages: messages as any
+            });
+
+            let text = "";
+            if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+                const content = result.choices[0].message.content;
+                if (typeof content === 'string') {
+                    text = content;
+                } else if (Array.isArray(content)) {
+                    text = content.map(chunk => {
+                        if (typeof chunk === 'string') {
+                            return chunk;
+                        }
+                        if ('text' in chunk) {
+                            return chunk.text;
+                        }
+                        return '';
+                    }).join('');
+                }
+            }
+
+            if (!text) {
+                text = "Error: No code generated. Please try again.";
+            }
+
+            setGeneratedCode(text);
+            setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, text));
+
+            // Close and reopen modal to show updated code
+            setCodeModalOpen(false);
+            setTimeout(() => {
+                setCodeModalOpen(true);
+            }, 100);
+
+        } catch (e) {
+            console.error("Mistral API Error:", e);
+            if (e instanceof Error) {
+                setError(`Code regeneration error: ${e.message}`);
+            } else {
+                setError("An error occurred while regenerating the code. Please try again.");
+            }
+        } finally {
+            setCodeLoading(false);
+        }
+    };
 
     // Function to aggregate the code of the direct children inside the circles
     const aggregateCode = async (circleNodeId: string, currentGraphIndex: number): Promise<boolean> => {
@@ -661,6 +726,7 @@ const Flow = () => {
 
             setCodeModalOpen(true);
             setCodeLoading(true);
+            setCurrentCodeCacheKey(cacheKey);
             
             const circleNode = nodes.find(n => n.id === circleNodeId);
             const circleGoal = circleNode?.data?.contents || "Goal";
@@ -671,15 +737,15 @@ const Flow = () => {
             
             const aggregationPrompt = `You are a senior software engineer. You have been given code snippets from multiple sub-components (tasks and/or goals) that together implement the higher-level functional goal: "${circleGoal}".
 
-Your task is to integrate and aggregate these code snippets into a cohesive, well-structured implementation that represents the complete functional goal.
+Your task is to aggregate these code snippets into a cohesive, well-structured implementation.
 
 Code snippets from sub-components:
 ${codeSnippets}
 
 Instructions:
-- Integrate all code snippets into a unified implementation.
+- Integrate all code snippets into a unified implementation, do not add new code.
 - Remove duplications and resolve any conflicts between snippets.
-- Ensure the code flows logically and all parts work together.
+- Ensure the code flows logically and all parts work together functionally.
 - Use ${codeLanguage} as programming language.
 - Keep the code clean, maintainable, and following best practices.
 - Make the code secure, following OWASP Top 10 and common CWEs.
@@ -826,6 +892,7 @@ VERY IMPORTANT:
 
             setCodeModalOpen(true);
             setCodeLoading(true);
+            setCurrentCodeCacheKey(cacheKey);
             
             const rootNode = nodes.find(n => n.id === rootNodeId);
             const rootGoal = rootNode?.data?.contents || "Main Goal";
@@ -844,7 +911,7 @@ Code snippets from all major components:
 ${codeSnippets}
 
 Instructions:
-- Integrate all code snippets into a cohesive, well-architected application, do not add any new code.
+- Integrate all code snippets into a cohesive, do not add any new code.
 - Remove duplications and resolve any conflicts between components.
 - Ensure proper separation of concerns and modular design.
 - Add necessary main entry points, configuration, and initialization code.
@@ -1270,6 +1337,17 @@ VERY IMPORTANT:
                 onClose={() => setCodeModalOpen(false)}
                 code={generatedCode}
                 isLoading={codeLoading}
+                onCodeUpdate={(newCode) => {
+                    setGeneratedCode(newCode);
+                    setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, newCode));
+                    setCodeModalOpen(false);
+                    setTimeout(() => {
+                        setCodeModalOpen(true);
+                    }, 100);
+                }}
+                onRegenerate={(additionalPrompt) => {
+                    regenerateCodeWithPrompt(additionalPrompt);
+                }}
             />
         </div>
     );
