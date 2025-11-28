@@ -328,7 +328,7 @@ const Flow = () => {
                     - Only one main functional goal (circle) as the root.
                     - Every other node must have at least one parent.
                     - Each hexagon (task) must connect to a circle.
-                    - Each round-rectangle (soft goal) must connect to a circle or a hexagon.
+                    - Each round-rectangle (soft goal) must connect to a hexagon.
                     - A circle must be connected to at least two hexagons (tasks) otherwise just use one hexagon.
                 2. Connections:
                     - No duplicate edges between two nodes.
