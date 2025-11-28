@@ -1186,7 +1186,7 @@ VERY IMPORTANT:
                     onSubmit={handleModalSubmit}
                 />
             }
-            <PanelGroup direction="horizontal" style={{display: thinking ? "none" : "block"}}>
+            <PanelGroup direction="horizontal" style={{display: thinking || isModalOpen ? "none" : "flex"}}>
                 {isLeftSidebarOpen ? (
                     <ResizablePanel
                         order={1}
