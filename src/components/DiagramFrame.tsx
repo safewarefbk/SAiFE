@@ -159,7 +159,6 @@ const detectProgrammingLanguage = (description: string): string => {
 
 const Flow = () => {
     const [chatSessions, setChatSessions] = useState<{ [key: string]: Array<{role: string, parts: Array<{text: string}>}> }>({});
-    const [codeSessions, setCodeSessions] = useState<Array<{role: "user" | "assistant", content: string}>>([]);
     const [codeLanguage, setCodeLanguage] = useState<string>("Python");
     const diagram = useDiagram();
     const { setNodes, getNodes, getEdges } = diagram.useReactFlow();
@@ -184,7 +183,6 @@ const Flow = () => {
     const [generatedCode, setGeneratedCode] = useState<string>("");
     const [codeLoading, setCodeLoading] = useState(false);
     const [currentCodeCacheKey, setCurrentCodeCacheKey] = useState<string>("");
-    const [currentTaskName, setCurrentTaskName] = useState<string>("");
     const [currentOriginalPrompt, setCurrentOriginalPrompt] = useState<string>("");
     const [graphIndex, setGraphIndex] = useState<number>(-1);
     const graphIndexRef = useRef<number>(-1);
@@ -193,6 +191,7 @@ const Flow = () => {
     const [thinking, setThinking] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
     const [codeCache, setCodeCache] = useState<Map<string, string>>(new Map());
+    const [promptCache, setPromptCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
     const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
     const model = genAI.getGenerativeModel({
@@ -211,10 +210,6 @@ const Flow = () => {
 
     const getChatHistory = (sessionKey: string) => {
         return chatSessions[sessionKey] || [];
-    };
-
-    const getCodeHistory = () => {
-        return codeSessions || [];
     };
 
     const ThinkingIndicator = () => {
@@ -518,7 +513,6 @@ const Flow = () => {
                 setCodeLoading(true);
                 setError("");
                 setCurrentCodeCacheKey(cacheKey);
-                setCurrentTaskName(taskName);
             
                 if (cacheKey && codeCache.has(cacheKey)) {
                     const cachedCode = codeCache.get(cacheKey)!;
@@ -573,6 +567,7 @@ const Flow = () => {
                     
                     setGeneratedCode(text);
                     setCodeCache(prev => new Map(prev).set(cacheKey, text));
+                    setPromptCache(prev => new Map(prev).set(cacheKey, leafPrompt));
 
                 }
         } catch (e) {
@@ -594,7 +589,7 @@ const Flow = () => {
             setCodeLoading(true);
             setError("");
 
-            const enhancedPrompt = `${currentOriginalPrompt}\n\nAdditional instructions for this regeneration:\n${additionalPrompt}\n\nPlease regenerate the code incorporating these additional instructions while maintaining the original requirements. Output ONLY code.`;
+            const enhancedPrompt = `Original task requirements:\n${currentOriginalPrompt}\n\nCurrent code implementation:\n${generatedCode}\n\nAdditional modification instructions:\n${additionalPrompt}\n\nPlease modify the current code implementation to incorporate these additional instructions while maintaining the original requirements. Output ONLY the complete modified code.`;
 
             const messages = [{ role: "user", content: enhancedPrompt }];
 
@@ -654,8 +649,11 @@ const Flow = () => {
             if (codeCache.has(cacheKey)) {
                 console.log(`Using cached aggregated code for circle: ${cacheKey}`);
                 const cachedCode = codeCache.get(cacheKey)!;
+                const cachedPrompt = promptCache.get(cacheKey) || "Aggregated code for functional goal";
                 setCodeModalOpen(true);
                 setGeneratedCode(cachedCode);
+                setCurrentCodeCacheKey(cacheKey);
+                setCurrentOriginalPrompt(cachedPrompt);
                 setCodeLoading(false);
                 return true;
             }
@@ -783,6 +781,8 @@ VERY IMPORTANT:
             
             setGeneratedCode(text);
             setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            setPromptCache(prev => new Map(prev).set(cacheKey, aggregationPrompt));
+            setCurrentOriginalPrompt(aggregationPrompt);
             
             // If this is a subgraph and we're aggregating the root circle, copy to parent
             if (graphParentMap.has(currentGraphIndex)) {
@@ -793,6 +793,7 @@ VERY IMPORTANT:
                     const parentInfo = graphParentMap.get(currentGraphIndex)!;
                     const parentCacheKey = `${parentInfo.parentGraphIndex}_${parentInfo.parentNodeId}`;
                     setCodeCache(prev => new Map(prev).set(parentCacheKey, text));
+                    setPromptCache(prev => new Map(prev).set(parentCacheKey, aggregationPrompt));
                     console.log(`Code copied from subgraph root circle to parent node: ${parentCacheKey}`);
                     console.log(parentInfo);
                 }
@@ -821,8 +822,11 @@ VERY IMPORTANT:
             if (codeCache.has(cacheKey)) {
                 console.log(`Using cached aggregated code for root: ${cacheKey}`);
                 const cachedCode = codeCache.get(cacheKey)!;
+                const cachedPrompt = promptCache.get(cacheKey) || "Complete project implementation";
                 setCodeModalOpen(true);
                 setGeneratedCode(cachedCode);
+                setCurrentCodeCacheKey(cacheKey);
+                setCurrentOriginalPrompt(cachedPrompt);
                 setCodeLoading(false);
                 return true;
             }
@@ -955,6 +959,8 @@ VERY IMPORTANT:
             
             setGeneratedCode(text);
             setCodeCache(prev => new Map(prev).set(cacheKey, text));
+            setPromptCache(prev => new Map(prev).set(cacheKey, rootAggregationPrompt));
+            setCurrentOriginalPrompt(rootAggregationPrompt);
             return true;
             
         } catch (e) {
