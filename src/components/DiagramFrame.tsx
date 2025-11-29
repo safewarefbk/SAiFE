@@ -916,6 +916,7 @@ ${codeSnippets}
 
 Instructions:
 - Integrate all code snippets into a cohesive, do not add any new code.
+- Use all the provided code snippets effectively.
 - Remove duplications and resolve any conflicts between components.
 - Ensure proper separation of concerns and modular design.
 - Add necessary main entry points, configuration, and initialization code.
