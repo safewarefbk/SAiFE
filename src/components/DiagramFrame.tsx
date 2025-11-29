@@ -907,7 +907,7 @@ VERY IMPORTANT:
             
             const rootAggregationPrompt = `You are a senior software architect. You have been given code snippets from ALL major components for the "${rootGoal}".
 
-Your task is to create a COMPLETE, PRODUCTION-READY implementation of the entire project by integrating all the code snippets.
+Your task is to create a COMPLETE, PRODUCTION-READY implementation of the entire project by integrating and using all the code snippets.
 
 Project Description: ${originalDescription}
 
