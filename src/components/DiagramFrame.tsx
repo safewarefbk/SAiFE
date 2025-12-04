@@ -146,7 +146,7 @@ const detectProgrammingLanguage = (description: string): string => {
         });
 
         if (text.includes(lang.name.toLowerCase())) {
-            lang.score += 5;
+            lang.score += 20;
         }
     });
 
@@ -915,18 +915,18 @@ Code snippets from all major components:
 ${codeSnippets}
 
 Instructions:
-- Integrate all code snippets into a cohesive, do not add any new code.
+- Integrate all code snippets into a cohesive system, do not add new code.
+- Ensure that that each function is used at least once within the overall application, otherwise add a comment //unused.
 - Use all the provided code snippets effectively.
 - Remove duplications and resolve any conflicts between components.
 - Ensure proper separation of concerns and modular design.
 - Add necessary main entry points, configuration, and initialization code.
-- Use ${codeLanguage} as programming language.
 - Follow industry best practices for project structure and organization.
 - Make the code secure, following OWASP Top 10 and common CWEs.
 - Ensure all security requirements are implemented (authentication, authorization, encryption, etc.).
+- Use ${codeLanguage} as programming language.
 - If ${codeLanguage} is Java, create a complete application with proper package structure.
 - If ${codeLanguage} is Python, include necessary imports and a main entry point.
-- If ${codeLanguage} is JavaScript/TypeScript, create a complete application structure.
 - Add error handling, logging, and proper resource management.
 
 VERY IMPORTANT:
