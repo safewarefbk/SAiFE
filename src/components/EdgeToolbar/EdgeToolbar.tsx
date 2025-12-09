@@ -1,6 +1,6 @@
 import React from "react";
 import { Algorithm } from "../edges/EditableEdge/constants";
-import { AnalyticsOutline } from "react-ionicons";
+import { IoAnalyticsOutline } from "react-icons/io5";
 import { TbLetterL, TbVectorSpline } from "react-icons/tb";
 import { TfiVector } from "react-icons/tfi";
 import {Crosshair, Trash2} from "react-feather";
@@ -135,7 +135,7 @@ function EdgeToolbar(props: EdgeToolbarProps) {
                       : "border border-transparent"
               }`}
           >
-            <AnalyticsOutline cssClasses={"text-black dark:text-white"}/>
+            <IoAnalyticsOutline className="text-black dark:text-white" size={24}/>
           </button>
           <button
               onClick={() => onShapeChange(Algorithm.BezierCatmullRom)}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import MonacoEditor from "react-monaco-editor";
+import Editor from "@monaco-editor/react";
 import "./jsonViewer.css";
 import { IoMdClose } from "react-icons/io";
 
@@ -90,10 +90,10 @@ const JsonViewer: React.FC<JsonViewerProps> = (props: JsonViewerProps) => {
           <IoMdClose />
         </div>
       </div>
-      <MonacoEditor
+      <Editor
         width={width}
         height={height}
-        language={syntaxHighlighting ? "json" : ""}
+        language={syntaxHighlighting ? "json" : "plaintext"}
         theme="vs-dark"
         value={prettyJsonString}
         options={{

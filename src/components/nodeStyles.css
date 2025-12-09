@@ -36,7 +36,7 @@
   background: #9ca8b3;
 }
 
-.node :global .react-flow__resize-control.handle {
+.node .react-flow__resize-control.handle {
   width: 10px;
   height: 10px;
   border-radius: 100%;
