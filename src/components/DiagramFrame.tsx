@@ -195,7 +195,7 @@ const Flow = () => {
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
     const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash",
     });
 
     const DEFAULT_MODEL = "codestral-latest";
