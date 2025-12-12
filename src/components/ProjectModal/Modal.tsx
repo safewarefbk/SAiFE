@@ -15,6 +15,7 @@ const ProjectModal = ({onSubmit}: ModalProps) => {
     const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDescription(e.target.value);
     }
+
     return (
         <div className="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
@@ -38,6 +39,12 @@ const ProjectModal = ({onSubmit}: ModalProps) => {
                                         id="project-description"
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                onSubmit(description, includeNonFunctional);
+                                            }
+                                        }}
                                         rows={3}></textarea>
                                     <div className="flex items-center mt-2">
                                         <input
@@ -50,6 +57,7 @@ const ProjectModal = ({onSubmit}: ModalProps) => {
                                         <label htmlFor="include-non-functional" className="text-sm text-gray-700">
                                             Include non-functional requirements
                                         </label>
+
                                     </div>
                                 </div>
                             </div>

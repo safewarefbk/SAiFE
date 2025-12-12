@@ -47,9 +47,9 @@ const useDraggableEdgeLabel = (
   labelPosition?: number
 ): [RefObject<SVGPathElement>, RefObject<HTMLDivElement>] => {
   const { setEdges } = useReactFlow();
-  const edgePathRef = useRef<SVGPathElement>(null);
+  const edgePathRef = useRef<SVGPathElement>("init" as any);
   const dragInstance = useRef<Draggable[] | null>(null);
-  const draggableEdgeLabelRef = useRef<HTMLDivElement>(null);
+  const draggableEdgeLabelRef = useRef<HTMLDivElement>("init" as any);
   const edgeText = useRef({ index: labelPosition ?? INITIAL_EDGE_POSITION });
   const debounceFunc = useRef(normalDebounce((fn) => fn())).current;
 
