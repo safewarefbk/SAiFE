@@ -157,7 +157,7 @@ const detectProgrammingLanguage = (description: string): string => {
 };
 
 const Flow = () => {
-    const [chatSessions, setChatSessions] = useState<{ [key: string]: Array<{role: string, parts: Array<{text: string}>}> }>({});
+    const [sessionId, setSessionId] = useState<string | null>(null);  // Server manages chat history
     const [codeLanguage, setCodeLanguage] = useState<string>("Python");
     const diagram = useDiagram();
     const { setNodes, getNodes, getEdges } = diagram.useReactFlow();
@@ -184,9 +184,6 @@ const Flow = () => {
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
     const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
 
-    const getChatHistory = (sessionKey: string) => {
-        return chatSessions[sessionKey] || [];
-    };
 
     const ThinkingIndicator = () => {
         const [dots, setDots] = useState('');
@@ -284,13 +281,11 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to generate diagram');
             }
 
-            const { responseText, history } = await response.json();
+            const { responseText, sessionId: newSessionId } = await response.json();
 
-            setChatSessions(prev => ({
-                ...prev,
-                ["main"]: history
-            }));
-            
+            // Store sessionId - server keeps the history
+            setSessionId(newSessionId);
+
             if (JSON.parse(responseText)) {
                 diagram.uploadJson(responseText);
                 console.log(diagram);
@@ -317,15 +312,20 @@ const Flow = () => {
             return;
         }
 
-        try {
-            const currentHistory = getChatHistory("main");
+        if (!sessionId) {
+            setError("No active session. Please generate a diagram first.");
+            setThinking(false);
+            return;
+        }
 
+        try {
+            // Only send sessionId and taskName - server has the history
             const response = await fetch('/api/llm/diagram/task', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ taskName, history: currentHistory }),
+                body: JSON.stringify({ sessionId, taskName }),
             });
 
             if (!response.ok) {
@@ -333,12 +333,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to generate task diagram');
             }
 
-            const { responseText, history } = await response.json();
-
-            setChatSessions(prev => ({
-                ...prev,
-                ["main"]: history
-            }));
+            const { responseText } = await response.json();
 
             if (JSON.parse(responseText)) {
                 diagram.uploadJson(responseText);
