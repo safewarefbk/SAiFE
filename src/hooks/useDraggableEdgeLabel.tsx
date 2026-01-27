@@ -1,6 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { gsap } from "gsap";
-import { Draggable } from "gsap/Draggable";
+import { Draggable } from "gsap/all";
 import { findIndex, toNumber } from "lodash";
 import { debounce } from "lodash/fp";
 import { RefObject, useEffect, useRef } from "react";

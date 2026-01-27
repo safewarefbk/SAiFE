@@ -26,6 +26,13 @@ import {
     PanelResizeHandle,
     Panel as ResizablePanel,
 } from "react-resizable-panels";
+import { 
+    detectProgrammingLanguage, 
+    getDefaultSize, 
+    getCacheKey, 
+    findRootNodes, 
+    findDirectCodeChildren 
+} from "./utils/utils";
 
 const JsonViewer = dynamic(() => import("./JsonViewer/JsonViewer"), {
     ssr: false,
@@ -52,109 +59,6 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
     style: {strokeWidth: 2},
 };
 
-const detectProgrammingLanguage = (description: string): string => {
-    const text = description.toLowerCase();
-    
-    const languagePatterns = [
-        {
-            name: "TypeScript",
-            patterns: ["typescript", "ts", "angular", "nest.js", "nestjs", "deno"],
-            keywords: ["interface", "type", "enum", "namespace"],
-            score: 0
-        },
-        {
-            name: "JavaScript",
-            patterns: ["javascript", "js", "node.js", "nodejs", "react", "vue", "express", "npm"],
-            keywords: ["function", "const", "let", "var", "async", "await"],
-            score: 0
-        },
-        {
-            name: "Python",
-            patterns: ["python", "django", "flask", "fastapi", "pandas", "numpy", "pytorch"],
-            keywords: ["def", "class", "import", "from", "__init__"],
-            score: 0
-        },
-        {
-            name: "Java",
-            patterns: ["java", "spring", "springboot", "maven", "gradle", "jvm"],
-            keywords: ["public", "private", "protected", "class", "interface"],
-            score: 0
-        },
-        {
-            name: "C#",
-            patterns: ["c#", "csharp", "\\.net", "dotnet", "asp\\.net", "blazor"],
-            keywords: ["public", "private", "namespace", "using"],
-            score: 0
-        },
-        {
-            name: "Go",
-            patterns: ["golang", "go lang"],
-            keywords: ["func", "package", "import", "goroutine"],
-            score: 0
-        },
-        {
-            name: "Rust",
-            patterns: ["rust", "cargo"],
-            keywords: ["fn", "let", "mut", "struct", "enum", "impl"],
-            score: 0
-        },
-        {
-            name: "PHP",
-            patterns: ["php", "laravel", "symfony", "wordpress"],
-            keywords: ["<\\?php", "function", "class", "\\$"],
-            score: 0
-        },
-        {
-            name: "Ruby",
-            patterns: ["ruby", "rails", "gem"],
-            keywords: ["def", "class", "module", "end"],
-            score: 0
-        },
-        {
-            name: "C++",
-            patterns: ["c\\+\\+", "cpp", "cplusplus"],
-            keywords: ["#include", "namespace", "std::", "class"],
-            score: 0
-        },
-        {
-            name: "C",
-            patterns: ["\\bc\\b", "embedded", "microcontroller"],
-            keywords: ["#include", "stdio.h", "malloc", "printf"],
-            score: 0
-        }
-    ];
-
-    languagePatterns.forEach(lang => {
-        lang.patterns.forEach(pattern => {
-            try {
-                const regex = new RegExp(pattern, 'gi');
-                const matches = (text.match(regex) || []).length;
-                lang.score += matches * 3;
-            } catch (e) {
-                console.warn(`Regex error for pattern "${pattern}":`, e);
-                if (text.includes(pattern.toLowerCase())) {
-                    lang.score += 3;
-                }
-            }
-        });
-
-        lang.keywords.forEach(keyword => {
-            if (text.includes(keyword.toLowerCase())) {
-                lang.score += 2;
-            }
-        });
-
-        if (text.includes(lang.name.toLowerCase())) {
-            lang.score += 20;
-        }
-    });
-
-    const bestMatch = languagePatterns.reduce((best, current) => 
-        current.score > best.score ? current : best
-    );
-
-    return bestMatch.score > 0 ? bestMatch.name : "Python";
-};
 
 const Flow = () => {
     const [sessionId, setSessionId] = useState<string | null>(null);  // Server manages chat history
@@ -183,7 +87,7 @@ const Flow = () => {
     const [promptCache, setPromptCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
     const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
-
+    const [validationCache, setValidationCache] = useState<Map<string, boolean>>(new Map());
 
     const ThinkingIndicator = () => {
         const [dots, setDots] = useState('');
@@ -251,12 +155,6 @@ const Flow = () => {
         );
     };
 
-
-   const findRootNode = () => {
-    const nodes = getNodes();
-    const edges = getEdges();
-    return nodes.filter(node => !edges.some(edge => edge.source === node.id));
-};
 
     // Function to generate the first graph of the project
     const handleModalSubmit = async (description: string, includeNonFunctional: boolean) => {
@@ -463,7 +361,7 @@ const Flow = () => {
     // Function to aggregate the code of the direct children inside the circles
     const aggregateCode = async (circleNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
-            const cacheKey = `${currentGraphIndex}_${circleNodeId}`;
+            const cacheKey = getCacheKey(currentGraphIndex, circleNodeId);
 
             if (codeCache.has(cacheKey)) {
                 console.log(`Using cached aggregated code for circle: ${cacheKey}`);
@@ -480,35 +378,7 @@ const Flow = () => {
             const edges = getEdges();
             const nodes = getNodes();
 
-            const findDirectCodeChildren = (nodeId: string): string[] => {
-                const queue: string[] = [nodeId];
-                const visited = new Set<string>();
-                const codeNodeIds: string[] = [];
-
-                while (queue.length > 0) {
-                    const currentId = queue.shift()!;
-                    if (visited.has(currentId)) continue;
-                    visited.add(currentId);
-
-                    const childEdges = edges.filter(edge => edge.target === currentId);
-
-                    for (const edge of childEdges) {
-                        const childNode = nodes.find(n => n.id === edge.source);
-                        if (!childNode) continue;
-
-                        if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
-                            codeNodeIds.push(edge.source);
-                        }
-                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
-                            queue.push(edge.source);
-                        }
-                    }
-                }
-
-                return codeNodeIds;
-            };
-
-            const codeNodeIds = findDirectCodeChildren(circleNodeId);
+            const codeNodeIds = findDirectCodeChildren(circleNodeId, nodes, edges);
             const childNodes = nodes.filter(node => codeNodeIds.includes(node.id));
 
             if (childNodes.length === 0) {
@@ -520,9 +390,9 @@ const Flow = () => {
             let missingCode = false;
 
             for (const childNode of childNodes) {
-                const childCacheKey = `${currentGraphIndex}_${childNode.id}`;
+                const childCacheKey = getCacheKey(currentGraphIndex, childNode.id);
 
-                if (codeCache.has(childCacheKey)) {
+                if (codeCache.has(childCacheKey) && validationCache.get(childCacheKey)) {
                     const code = codeCache.get(childCacheKey)!;
                     const taskName = String(childNode.data.contents || "Unknown");
                     const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
@@ -534,7 +404,7 @@ const Flow = () => {
             }
 
             if (missingCode) {
-                setError("Some children don't have generated code yet. Please generate/aggregate code for all children first.");
+                setError("Some children don't have generated/validated code yet. Please generate/aggregate code for all children first.");
                 setCodeLoading(false);
                 return false;
             }
@@ -574,12 +444,12 @@ const Flow = () => {
 
             // If this is a subgraph and we're aggregating the root circle, copy to parent
             if (graphParentMap.has(currentGraphIndex)) {
-                const rootNodes = findRootNode();
+                const rootNodes = findRootNodes(nodes, edges);
                 const isRootNode = rootNodes.some(node => node.id === circleNodeId);
 
                 if (isRootNode) {
                     const parentInfo = graphParentMap.get(currentGraphIndex)!;
-                    const parentCacheKey = `${parentInfo.parentGraphIndex}_${parentInfo.parentNodeId}`;
+                    const parentCacheKey = getCacheKey(parentInfo.parentGraphIndex, parentInfo.parentNodeId);
                     setCodeCache(prev => new Map(prev).set(parentCacheKey, code));
                     setPromptCache(prev => new Map(prev).set(parentCacheKey, prompt));
                     console.log(`Code copied from subgraph root circle to parent node: ${parentCacheKey}`);
@@ -605,7 +475,7 @@ const Flow = () => {
     // Function to aggregate the code of the entire graph from the root node
     const aggregateCodeFromRoot = async (rootNodeId: string, currentGraphIndex: number): Promise<boolean> => {
         try {
-            const cacheKey = `${currentGraphIndex}_${rootNodeId}`;
+            const cacheKey = getCacheKey(currentGraphIndex, rootNodeId);
 
             if (codeCache.has(cacheKey)) {
                 console.log(`Using cached aggregated code for root: ${cacheKey}`);
@@ -623,35 +493,7 @@ const Flow = () => {
             const nodes = getNodes();
 
             // Get first level children
-            const findDirectCodeChildren = (nodeId: string): string[] => {
-                const queue: string[] = [nodeId];
-                const visited = new Set<string>();
-                const codeNodeIds: string[] = [];
-
-                while (queue.length > 0) {
-                    const currentId = queue.shift()!;
-                    if (visited.has(currentId)) continue;
-                    visited.add(currentId);
-
-                    const childEdges = edges.filter(edge => edge.target === currentId);
-
-                    for (const edge of childEdges) {
-                        const childNode = nodes.find(n => n.id === edge.source);
-                        if (!childNode) continue;
-
-                        if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
-                            codeNodeIds.push(edge.source);
-                        }
-                        else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
-                            queue.push(edge.source);
-                        }
-                    }
-                }
-
-                return codeNodeIds;
-            };
-
-            const codeNodeIds = findDirectCodeChildren(rootNodeId);
+            const codeNodeIds = findDirectCodeChildren(rootNodeId, nodes, edges);
             const childNodes = nodes.filter(node => codeNodeIds.includes(node.id));
 
             if (childNodes.length === 0) {
@@ -663,9 +505,9 @@ const Flow = () => {
             let missingCode = false;
 
             for (const childNode of childNodes) {
-                const childCacheKey = `${currentGraphIndex}_${childNode.id}`;
+                const childCacheKey = getCacheKey(currentGraphIndex, childNode.id);
 
-                if (codeCache.has(childCacheKey)) {
+                if (codeCache.has(childCacheKey) && validationCache.get(childCacheKey)) {
                     const code = codeCache.get(childCacheKey)!;
                     const taskName = String(childNode.data.contents || "Unknown");
                     const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
@@ -677,7 +519,7 @@ const Flow = () => {
             }
 
             if (missingCode) {
-                setError("Some children don't have generated code yet. Please generate/aggregate code for all children first.");
+                setError("Some children don't have generated/validated code yet. Please generate/aggregate code for all children first.");
                 setCodeLoading(false);
                 return false;
             }
@@ -729,12 +571,6 @@ const Flow = () => {
         }
     };
 
-    const getDefaultSize = (w: number) => {
-        if (w < 1024) {
-            return 33;
-        } else return 20;
-    };
-
     const toggleRightSidebar = () => {
         setIsRightSidebarOpen(!isRightSidebarOpen);
     };
@@ -754,7 +590,7 @@ const Flow = () => {
     };
 
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
-        const cacheKey = `${currentGraphIndex}_${nodeId}`;
+        const cacheKey = getCacheKey(currentGraphIndex, nodeId);
 
         setTimeout(() => {
         generateCodeForLeaf(cacheKey, taskName);
@@ -769,7 +605,7 @@ const Flow = () => {
 
 
     const handleGenerateGraphFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
-        const cacheKey = `${currentGraphIndex}_${nodeId}`;
+        const cacheKey = getCacheKey(currentGraphIndex, nodeId);
 
         if (graphCache.has(cacheKey)) {
             const cachedGraphIndex = graphCache.get(cacheKey)!;
@@ -802,6 +638,12 @@ const Flow = () => {
         }
     }, [aggregateCodeFromRoot]);
 
+
+    const handleValidateCode = () => {
+        setValidationCache(prev => new Map(prev).set(currentCodeCacheKey, true));
+        console.log(`Code validated for key: ${currentCodeCacheKey}`);
+        setCodeModalOpen(false);
+    };
 
     const previousGraph = () => {
         if (graphIndex > 0) {
@@ -844,7 +686,7 @@ const Flow = () => {
             const customEvent = event as CustomEvent<{ circleNodeId: string }>;
             const { circleNodeId } = customEvent.detail;
             const currentGraphIndex = graphIndexRef.current;
-            const rootNodes = findRootNode();
+            const rootNodes = findRootNodes(getNodes(), getEdges());
             const isRootNode = rootNodes.some(node => node.id === circleNodeId);
 
             if (isRootNode && currentGraphIndex === 0) {
@@ -912,12 +754,12 @@ const Flow = () => {
         setNodes((nodes) =>
             nodes.map((node) => {
                 if (node.data?.type === "hexagon" || node.data?.type === "circle") {
-                    const cacheKey = `${graphIndex}_${node.id}`;
+                    const cacheKey = getCacheKey(graphIndex, node.id);
                     const hasCode = codeCache.has(cacheKey);
                     const hasGraph = graphCache.has(cacheKey);
-
+                    const isValidated = validationCache.has(cacheKey);
                     let color = node.data.color;
-                    if (hasCode) {
+                    if (isValidated) {
                         color = "#F7931E";
                     }
 
@@ -934,7 +776,7 @@ const Flow = () => {
                 return node;
             })
         );
-    }, [codeCache, graphCache, graphIndex, setNodes]);
+    }, [codeCache, graphCache, graphIndex, setNodes, validationCache]);
 
     return (
         <div className="w-full h-full">
@@ -1095,7 +937,9 @@ const Flow = () => {
                 isOpen={codeModalOpen}
                 onClose={() => setCodeModalOpen(false)}
                 code={generatedCode}
+                codeLanguage={codeLanguage}
                 isLoading={codeLoading}
+                onValidate={handleValidateCode}
                 onCodeUpdate={(newCode) => {
                     setGeneratedCode(newCode);
                     setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, newCode));

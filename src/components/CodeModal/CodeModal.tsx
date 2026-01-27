@@ -12,9 +12,11 @@ interface CodeModalProps {
   isLoading?: boolean;
   onCodeUpdate?: (newCode: string) => void;
   onRegenerate?: (additionalPrompt: string) => void;
+  onValidate?: () => void;
+  codeLanguage?: string;
 }
 
-const CodeModal: React.FC<CodeModalProps> = ({ isOpen, onClose, code, isLoading, onCodeUpdate, onRegenerate }) => {
+const CodeModal: React.FC<CodeModalProps> = ({ isOpen, onClose, code, isLoading, onCodeUpdate, onRegenerate, onValidate, codeLanguage }) => {
   const themeHook = useTheme();
   const [dots, setDots] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -45,51 +47,10 @@ const CodeModal: React.FC<CodeModalProps> = ({ isOpen, onClose, code, isLoading,
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  const detectLanguage = (code: string): string => {
-    const cleanCode = code.trim().toLowerCase();
-    
-    if (cleanCode.includes('import java') || cleanCode.includes('public class') || cleanCode.includes('public static void main')) {
-      return 'java';
-    }
-    if (cleanCode.includes('def ') || cleanCode.includes('import ') && cleanCode.includes('python') || cleanCode.includes('print(')) {
-      return 'python';
-    }
-    if (cleanCode.includes('function ') || cleanCode.includes('const ') || cleanCode.includes('let ') || cleanCode.includes('var ')) {
-      return 'javascript';
-    }
-    if (cleanCode.includes('interface ') || cleanCode.includes(': string') || cleanCode.includes(': number')) {
-      return 'typescript';
-    }
-    if (cleanCode.includes('#include') || cleanCode.includes('int main') || cleanCode.includes('printf')) {
-      return 'c';
-    }
-    if (cleanCode.includes('using namespace') || cleanCode.includes('std::') || cleanCode.includes('cout')) {
-      return 'cpp';
-    }
-    if (cleanCode.includes('using System') || cleanCode.includes('namespace ') || cleanCode.includes('Console.WriteLine')) {
-      return 'csharp';
-    }
-    if (cleanCode.includes('<?php') || cleanCode.includes('echo ') || cleanCode.includes('$_')) {
-      return 'php';
-    }
-    if (cleanCode.includes('SELECT ') || cleanCode.includes('FROM ') || cleanCode.includes('WHERE ')) {
-      return 'sql';
-    }
-    if (cleanCode.includes('<html') || cleanCode.includes('<div') || cleanCode.includes('<p>')) {
-      return 'html';
-    }
-    if (cleanCode.includes('body {') || cleanCode.includes('.class') || cleanCode.includes('#id')) {
-      return 'css';
-    }
-    if (cleanCode.includes('{') && cleanCode.includes('}') && (cleanCode.includes('"') || cleanCode.includes("'"))) {
-      return 'json';
-    }
-    
-    return 'text';
-  };
+  let language = codeLanguage?.toLowerCase();
+  if(language === 'c#') language = 'csharp';
+  if(language === 'c++') language = 'cpp';
 
-  const language = useMemo(() => detectLanguage(code), [code]);
-  
   if (!isOpen) return null;
 
   const copyToClipboard = async () => {
@@ -153,6 +114,13 @@ const CodeModal: React.FC<CodeModalProps> = ({ isOpen, onClose, code, isLoading,
           <div className="flex gap-2">
             {!isEditing ? (
               <>
+              <button
+                  onClick={onValidate}
+                  className="flex items-center gap-1 rounded-md bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
+                >
+                  <Check size={14} />
+                  Validate Code
+                </button>
                 <button
                   onClick={copyToClipboard}
                   className="rounded-md bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700"
