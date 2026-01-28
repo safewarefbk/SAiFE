@@ -34,9 +34,7 @@ import {
     findDirectCodeChildren 
 } from "./utils/utils";
 
-const JsonViewer = dynamic(() => import("./JsonViewer/JsonViewer"), {
-    ssr: false,
-});
+
 import {useCallback, useEffect, useRef, useState} from "react";
 import {useWindowSize} from "@/hooks/useWindowSize";
 import dynamic from "next/dynamic";
@@ -863,9 +861,6 @@ const Flow = () => {
                                     <Menu
                                         themeHook={themeHook}
                                         diagram={diagram}
-                                        isRightSidebarOpen={isRightSidebarOpen}
-                                        toggleRightSidebar={toggleRightSidebar}
-                                        toggleLeftSidebar={toggleLeftSidebar}
                                     />
                                 </Panel>
                                 <Controls className="" showInteractive={false}>
@@ -889,25 +884,6 @@ const Flow = () => {
                                 <diagram.Markers/>
                             </ReactFlow>
                         </ResizablePanel>
-                        <PanelResizeHandle
-                            className={`w-1 cursor-col-resize ${
-                                isRightSidebarOpen
-                                    ? "bg-stone-600 visible"
-                                    : "bg-transparent hidden"
-                            }`}
-                        />
-                        {isRightSidebarOpen ? (
-                            <ResizablePanel
-                                order={2}
-                                defaultSize={getDefaultSize(width)}
-                                minSize={getDefaultSize(width)}
-                            >
-                                <JsonViewer
-                                    jsonString={getSnapshotJson()}
-                                    toggleRightSidebar={toggleRightSidebar}
-                                />
-                            </ResizablePanel>
-                        ) : null}
                     </PanelGroup>
                 </ResizablePanel>
             </PanelGroup>

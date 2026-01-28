@@ -44,36 +44,6 @@ const ShapeNode = ({id, selected, data}: any) => {
     const shiftKeyPressed = useKeyPress("Shift");
     const handleStyle = {backgroundColor: color};
 
-    const isCapsule = type === 'capsule';
-    const capsuleWidth = 40; // Capsule's fixed width
-    const capsuleHeight = 20; // Capsule's fixed height
-    const scaleFactor = 1; // Example scaling factor, use 1 for no scaling
-
-
-    const onColorChange = (color: string) => {
-        takeSnapshot();
-        setNodes((nodes) =>
-            nodes.map((node) => {
-                if (node.id === id) {
-                    return {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            color,
-                        },
-                    };
-                }
-
-                return node;
-            })
-        );
-        
-        setTimeout(() => {
-            const event = new CustomEvent('saveGraphToHistory');
-            window.dispatchEvent(event);
-        }, 100);
-    };
-
     const onResize = () => {
         updateNodeInternals(id);
     };
@@ -196,9 +166,6 @@ const ShapeNode = ({id, selected, data}: any) => {
     return (
         <>
             <ShapeNodeToolbar
-                onColorChange={onColorChange}
-                activeShape={type}
-                activeColor={color}
                 onDeleteNode={onDeleteNode}
             />
             {type === "circle" && selected && (
