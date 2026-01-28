@@ -1,8 +1,7 @@
 import { getCodeModel, HumanMessage } from './models';
 
 // System context is embedded in prompts since Mistral Codestral works best this way
-const CODE_CONTEXT = `You are a senior software engineer and security expert. 
-Follow OWASP Top 10 and CWE guidelines. Output ONLY code, no explanations.`;
+const CODE_CONTEXT = `Senior software engineer. OWASP/CWE compliant. Output ONLY code.`;
 
 /**
  * Agent for generating and modifying code
@@ -18,20 +17,9 @@ export class CodeAgent {
     }> {
         const model = getCodeModel();
 
-        const prompt = `${CODE_CONTEXT}
-
-Generate secure code for the task: ${taskName}
-
-Instructions:
-- Divide the code in logical functions based on functionality.
-- Keep code short and focused; avoid placeholders if not necessary.
-- Use ${language} as programming language.
-- Ensure code is clean, well-structured, and follows best practices.
-- Protect against common vulnerabilities (e.g., SQL injection, XSS).
-- If ${language} is Java, implement a compilable single class.
-- Generate a single file with secure functions.
-- If no code is needed, respond with "No code needed for this task."
-- Always use the name of the task for naming the class.`;
+        const prompt = `${CODE_CONTEXT}` +
+            `\nTask: ${taskName} | Lang: ${language}` +
+            `\nRules: only task-specific logic, short/focused, secure, single file.`;
 
         const response = await model.invoke([new HumanMessage(prompt)]);
         const code = typeof response.content === 'string'
@@ -51,18 +39,11 @@ Instructions:
     ): Promise<{ code: string }> {
         const model = getCodeModel();
 
-        const prompt = `${CODE_CONTEXT}
-
-Original task requirements:
-${originalPrompt}
-
-Current code implementation:
-${currentCode}
-
-Additional modification instructions:
-${additionalPrompt}
-
-Modify the current code to incorporate these additional instructions while maintaining the original requirements. Output ONLY the complete modified code.`;
+        const prompt = `${CODE_CONTEXT}` +
+            `\nOriginal prompt: ${originalPrompt}` +
+            `\nCurrent code:\n${currentCode}` +
+            `\nModify as follow: ${additionalPrompt}` +
+            `\nFollow original rules. Output complete modified code only.`;
 
         const response = await model.invoke([new HumanMessage(prompt)]);
         const code = typeof response.content === 'string'
@@ -91,49 +72,17 @@ Modify the current code to incorporate these additional instructions while maint
         let prompt: string;
 
         if (type === 'circle') {
-            prompt = `${CODE_CONTEXT}
-
-You have code snippets from multiple sub-components that implement the functional goal: "${goal}".
-
-Aggregate these into a cohesive implementation.
-
-Code snippets:
-${codeSnippets}
-
-Instructions:
-- Integrate all code snippets into a unified implementation, do not add new code.
-- Remove duplications and resolve any conflicts between snippets.
-- Ensure the code flows logically and all parts work together.
-- Use ${language} as programming language.
-- Keep the code clean, maintainable, and secure.
-- If ${language} is Java, create a compilable single class or properly structured classes.
-- The code should be applicable for: ${projectDescription}.
-
-Output ONLY the integrated code. Do NOT add comments like "// code from task X".`;
+            prompt = `${CODE_CONTEXT}` +
+                `\nGoal: "${goal}" | Context: ${projectDescription}` +
+                `\nSnippets:\n${codeSnippets}` +
+                `\nIntegrate provided snippets: merge, remove duplicates, resolve conflicts, clean/secure.`;
         } else {
-            prompt = `${CODE_CONTEXT}
-
-You have code snippets from ALL major components for: "${goal}".
-
-Create a COMPLETE, PRODUCTION-READY implementation by integrating all snippets.
-
-Project Description: ${projectDescription}
-
-Code snippets:
-${codeSnippets}
-
-Instructions:
-- Integrate all code snippets into a cohesive system, do not add new code.
-- Ensure each function is used at least once, otherwise add comment //unused.
-- Remove duplications and resolve conflicts.
-- Add necessary main entry points, configuration, and initialization code.
-- Follow industry best practices and ensure security.
-- Use ${language} as programming language.
-- If ${language} is Java, create a complete application with proper package structure.
-- If ${language} is Python, include necessary imports and a main entry point.
-- Add error handling, logging, and proper resource management.
-
-Output ONLY the complete integrated code. If multiple files needed, separate with "// ===== FILE: filename.ext =====".`;
+            prompt = `${CODE_CONTEXT}` +
+                `\nGoal: "${goal}" | Context: ${projectDescription}` +
+                `\nSnippets:\n${codeSnippets}` +
+                `\nCreate EXECUTABLE production-ready system.` +
+                `\nIntegrate provided snippets: merge, remove duplicates, resolve conflicts, clean/secure.` +
+                `\nMultiple files→separate with "// ===== FILE: name.ext ====="`;
         }
 
         const response = await model.invoke([new HumanMessage(prompt)]);

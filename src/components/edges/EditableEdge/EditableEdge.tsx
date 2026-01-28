@@ -26,7 +26,9 @@ const useIdsForInactiveControlPoints = (points: ControlPointData[]) => {
     } else {
         // calculate new control points
         newPoints = points.map((prevPoint, i) => {
-            const id = window.crypto.randomUUID();
+            const id = typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
             prevIds.current[i] = id;
             return prevPoint.active ? points[i] : {...points[i], id};
         });

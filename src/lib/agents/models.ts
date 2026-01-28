@@ -18,7 +18,7 @@ export function getDiagramModel(): ChatGoogleGenerativeAI {
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
         geminiDiagramModel = new ChatGoogleGenerativeAI({
-            model: "gemini-2.5-flash-lite",
+            model: "gemini-2.5-flash",
             // temperature: 0.7,
             apiKey,
             // maxOutputTokens: 65365,
