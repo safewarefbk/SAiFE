@@ -1,9 +1,9 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { Node, Edge } from "@xyflow/react";
+import {type ClassValue, clsx} from "clsx";
+import {twMerge} from "tailwind-merge";
+import {Node, Edge} from "@xyflow/react";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+    return twMerge(clsx(inputs));
 }
 
 export const getDefaultSize = (width: number) => {
@@ -38,8 +38,7 @@ export const findDirectCodeChildren = (nodeId: string, nodes: Node[], edges: Edg
 
             if (childNode.data?.type === "circle" || childNode.data?.type === "hexagon") {
                 codeNodeIds.push(edge.source);
-            }
-            else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
+            } else if (childNode.data?.type === "capsule" || childNode.data?.type === "round-rectangle") {
                 queue.push(edge.source);
             }
         }
@@ -50,105 +49,105 @@ export const findDirectCodeChildren = (nodeId: string, nodes: Node[], edges: Edg
 
 
 export const detectProgrammingLanguage = (description: string): string => {
-  const text = description.toLowerCase();
-  
-  const languagePatterns = [
-      {
-          name: "TypeScript",
-          patterns: ["typescript", "ts", "angular", "nest.js", "nestjs", "deno"],
-          keywords: ["interface", "type", "enum", "namespace"],
-          score: 0
-      },
-      {
-          name: "JavaScript",
-          patterns: ["javascript", "js", "node.js", "nodejs", "react", "vue", "express", "npm"],
-          keywords: ["function", "const", "let", "var", "async", "await"],
-          score: 0
-      },
-      {
-          name: "Python",
-          patterns: ["python", "django", "flask", "fastapi", "pandas", "numpy", "pytorch"],
-          keywords: ["def", "class", "import", "from", "__init__"],
-          score: 0
-      },
-      {
-          name: "Java",
-          patterns: ["java", "spring", "springboot", "maven", "gradle", "jvm"],
-          keywords: ["public", "private", "protected", "class", "interface"],
-          score: 0
-      },
-      {
-          name: "C#",
-          patterns: ["c#", "csharp", "\\.net", "dotnet", "asp\\.net", "blazor"],
-          keywords: ["public", "private", "namespace", "using"],
-          score: 0
-      },
-      {
-          name: "Go",
-          patterns: ["golang", "go lang"],
-          keywords: ["func", "package", "import", "goroutine"],
-          score: 0
-      },
-      {
-          name: "Rust",
-          patterns: ["rust", "cargo"],
-          keywords: ["fn", "let", "mut", "struct", "enum", "impl"],
-          score: 0
-      },
-      {
-          name: "PHP",
-          patterns: ["php", "laravel", "symfony", "wordpress"],
-          keywords: ["<\\?php", "function", "class", "\\$"],
-          score: 0
-      },
-      {
-          name: "Ruby",
-          patterns: ["ruby", "rails", "gem"],
-          keywords: ["def", "class", "module", "end"],
-          score: 0
-      },
-      {
-          name: "C++",
-          patterns: ["c\\+\\+", "cpp", "cplusplus"],
-          keywords: ["#include", "namespace", "std::", "class"],
-          score: 0
-      },
-      {
-          name: "C",
-          patterns: ["\\bc\\b", "embedded", "microcontroller"],
-          keywords: ["#include", "stdio.h", "malloc", "printf"],
-          score: 0
-      }
-  ];
+    const text = description.toLowerCase();
 
-  languagePatterns.forEach(lang => {
-      lang.patterns.forEach(pattern => {
-          try {
-              const regex = new RegExp(pattern, 'gi');
-              const matches = (text.match(regex) || []).length;
-              lang.score += matches * 3;
-          } catch (e) {
-              console.warn(`Regex error for pattern "${pattern}":`, e);
-              if (text.includes(pattern.toLowerCase())) {
-                  lang.score += 3;
-              }
-          }
-      });
+    const languagePatterns = [
+        {
+            name: "TypeScript",
+            patterns: ["typescript", "ts", "angular", "nest.js", "nestjs", "deno"],
+            keywords: ["interface", "type", "enum", "namespace"],
+            score: 0
+        },
+        {
+            name: "JavaScript",
+            patterns: ["javascript", "js", "node.js", "nodejs", "react", "vue", "express", "npm"],
+            keywords: ["function", "const", "let", "var", "async", "await"],
+            score: 0
+        },
+        {
+            name: "Python",
+            patterns: ["python", "django", "flask", "fastapi", "pandas", "numpy", "pytorch"],
+            keywords: ["def", "class", "import", "from", "__init__"],
+            score: 0
+        },
+        {
+            name: "Java",
+            patterns: ["java", "spring", "springboot", "maven", "gradle", "jvm"],
+            keywords: ["public", "private", "protected", "class", "interface"],
+            score: 0
+        },
+        {
+            name: "C#",
+            patterns: ["c#", "csharp", "\\.net", "dotnet", "asp\\.net", "blazor"],
+            keywords: ["public", "private", "namespace", "using"],
+            score: 0
+        },
+        {
+            name: "Go",
+            patterns: ["golang", "go lang"],
+            keywords: ["func", "package", "import", "goroutine"],
+            score: 0
+        },
+        {
+            name: "Rust",
+            patterns: ["rust", "cargo"],
+            keywords: ["fn", "let", "mut", "struct", "enum", "impl"],
+            score: 0
+        },
+        {
+            name: "PHP",
+            patterns: ["php", "laravel", "symfony", "wordpress"],
+            keywords: ["<\\?php", "function", "class", "\\$"],
+            score: 0
+        },
+        {
+            name: "Ruby",
+            patterns: ["ruby", "rails", "gem"],
+            keywords: ["def", "class", "module", "end"],
+            score: 0
+        },
+        {
+            name: "C++",
+            patterns: ["c\\+\\+", "cpp", "cplusplus"],
+            keywords: ["#include", "namespace", "std::", "class"],
+            score: 0
+        },
+        {
+            name: "C",
+            patterns: ["\\bc\\b", "embedded", "microcontroller"],
+            keywords: ["#include", "stdio.h", "malloc", "printf"],
+            score: 0
+        }
+    ];
 
-      lang.keywords.forEach(keyword => {
-          if (text.includes(keyword.toLowerCase())) {
-              lang.score += 2;
-          }
-      });
+    languagePatterns.forEach(lang => {
+        lang.patterns.forEach(pattern => {
+            try {
+                const regex = new RegExp(pattern, 'gi');
+                const matches = (text.match(regex) || []).length;
+                lang.score += matches * 3;
+            } catch (e) {
+                console.warn(`Regex error for pattern "${pattern}":`, e);
+                if (text.includes(pattern.toLowerCase())) {
+                    lang.score += 3;
+                }
+            }
+        });
 
-      if (text.includes(lang.name.toLowerCase())) {
-          lang.score += 20;
-      }
-  });
+        lang.keywords.forEach(keyword => {
+            if (text.includes(keyword.toLowerCase())) {
+                lang.score += 2;
+            }
+        });
 
-  const bestMatch = languagePatterns.reduce((best, current) => 
-      current.score > best.score ? current : best
-  );
+        if (text.includes(lang.name.toLowerCase())) {
+            lang.score += 20;
+        }
+    });
 
-  return bestMatch.score > 0 ? bestMatch.name : "Python";
+    const bestMatch = languagePatterns.reduce((best, current) =>
+        current.score > best.score ? current : best
+    );
+
+    return bestMatch.score > 0 ? bestMatch.name : "Python";
 };

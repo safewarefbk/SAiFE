@@ -1,5 +1,5 @@
-import { getDiagramModel, HumanMessage, historyToMessages } from './models';
-import { sessionStore } from './session-store';
+import {getDiagramModel, HumanMessage, historyToMessages} from './models';
+import {sessionStore} from './session-store';
 
 const DIAGRAM_SYSTEM_PROMPT = `Generate an Initial Requirements Model as JSON with {nodes, edges}.
 
@@ -77,12 +77,12 @@ export class DiagramAgent {
         const sessionId = sessionStore.create({
             projectDescription: descriptionOrDefault,
             history: [
-                { role: "user", parts: [{ text: fullPrompt }] },
-                { role: "model", parts: [{ text: responseText }] }
+                {role: "user", parts: [{text: fullPrompt}]},
+                {role: "model", parts: [{text: responseText}]}
             ]
         });
 
-        return { sessionId, diagram: responseText };
+        return {sessionId, diagram: responseText};
     }
 
     /**
@@ -116,7 +116,7 @@ export class DiagramAgent {
         sessionStore.appendHistory(sessionId, "user", taskPrompt);
         sessionStore.appendHistory(sessionId, "model", responseText);
 
-        return { diagram: responseText };
+        return {diagram: responseText};
     }
 }
 

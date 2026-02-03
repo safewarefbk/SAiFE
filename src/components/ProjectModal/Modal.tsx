@@ -7,7 +7,7 @@ interface ModalProps {
 
 const ProjectModal = ({onSubmit}: ModalProps) => {
     const [description, setDescription] = useState("");
-    const [includeNonFunctional, setIncludeNonFunctional] = useState(true);
+    const [includeNonFunctional, setIncludeNonFunctional] = useState(false);
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit(description, includeNonFunctional);

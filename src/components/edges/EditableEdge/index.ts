@@ -1,3 +1,2 @@
 export * from './EditableEdge';
-export * from './ControlPoint';
-export * from './path';
+export * from './path/straight';

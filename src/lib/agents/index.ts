@@ -7,7 +7,7 @@
  * - Simple, clean implementation
  */
 
-export { diagramAgent, DiagramAgent } from './diagram-agent';
-export { codeAgent, CodeAgent } from './code-agent';
-export { sessionStore } from './session-store';
+export {diagramAgent, DiagramAgent} from './diagram-agent';
+export {codeAgent, CodeAgent} from './code-agent';
+export {sessionStore} from './session-store';
 

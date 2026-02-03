@@ -17,7 +17,7 @@ import {useEffect} from "react";
 import useUndoRedo from "@/hooks/useUndoRedo";
 import {fas} from "@fortawesome/free-solid-svg-icons";
 import {library} from "@fortawesome/fontawesome-svg-core";
-import { Code, GitBranch } from "react-feather";
+import {Code, GitBranch} from "react-feather";
 
 library.add(fas);
 
@@ -47,7 +47,7 @@ const ShapeNode = ({id, selected, data}: any) => {
     const onResize = () => {
         updateNodeInternals(id);
     };
-    
+
     const onResizeEnd = () => {
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
@@ -72,7 +72,7 @@ const ShapeNode = ({id, selected, data}: any) => {
                 return node;
             })
         );
-        
+
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
@@ -81,19 +81,19 @@ const ShapeNode = ({id, selected, data}: any) => {
 
     const onDeleteNode = () => {
         takeSnapshot();
-        
+
         const edges = getEdges();
         const nodes = getNodes();
-        
+
         // BFS to find all parent nodes
         const findAllParents = (startNodeId: string): string[] => {
             const children: string[] = [];
             const queue: string[] = [startNodeId];
             const visited = new Set<string>();
-            
+
             while (queue.length > 0) {
                 const currentNodeId = queue.shift()!;
-                
+
                 if (visited.has(currentNodeId)) {
                     continue;
                 }
@@ -109,21 +109,21 @@ const ShapeNode = ({id, selected, data}: any) => {
                     }
                 });
             }
-            
+
             return children;
         };
 
         const nodesToDelete = [id, ...findAllParents(id)];
 
-        const edgesToKeep = edges.filter(edge => 
+        const edgesToKeep = edges.filter(edge =>
             !nodesToDelete.includes(edge.source) && !nodesToDelete.includes(edge.target)
         );
-        
+
         const remainingNodes = nodes.filter(node => !nodesToDelete.includes(node.id));
-        
+
         setNodes(remainingNodes);
         setEdges(edgesToKeep);
-        
+
         setTimeout(() => {
             const event = new CustomEvent('saveGraphToHistory');
             window.dispatchEvent(event);
@@ -169,7 +169,7 @@ const ShapeNode = ({id, selected, data}: any) => {
                 onDeleteNode={onDeleteNode}
             />
             {type === "circle" && selected && (
-                <NodeToolbar 
+                <NodeToolbar
                     position={Position.Top}
                     offset={10}
                     className="nodrag"
@@ -179,13 +179,13 @@ const ShapeNode = ({id, selected, data}: any) => {
                         className="flex items-center gap-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors shadow-md"
                         title="Aggregate code from child tasks"
                     >
-                        <Code size={16} />
+                        <Code size={16}/>
                         <span>{data.hasCode ? "Show Code" : "Aggregate Code"}</span>
                     </button>
                 </NodeToolbar>
             )}
             {type === "hexagon" && selected && (
-                <NodeToolbar 
+                <NodeToolbar
                     position={Position.Top}
                     offset={10}
                     className="nodrag"
@@ -196,7 +196,7 @@ const ShapeNode = ({id, selected, data}: any) => {
                             className="flex items-center gap-1 px-3 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 transition-colors shadow-md"
                             title={data.hasCode ? "Show generated code" : "Generate code for this task"}
                         >
-                            <Code size={16} />
+                            <Code size={16}/>
                             <span>{data.hasCode ? "Show Code" : "Generate Code"}</span>
                         </button>
                         <button
@@ -204,7 +204,7 @@ const ShapeNode = ({id, selected, data}: any) => {
                             className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors shadow-md"
                             title={data.hasGraph ? "Navigate to sub-graph" : "Generate sub-graph for this task"}
                         >
-                            <GitBranch size={16} />
+                            <GitBranch size={16}/>
                             <span>{data.hasGraph ? "Show Graph" : "Generate Graph"}</span>
                         </button>
                     </div>

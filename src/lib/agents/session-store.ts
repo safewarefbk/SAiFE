@@ -42,7 +42,7 @@ class SessionStore {
     update(id: string, data: Partial<SessionData>): boolean {
         const session = this.sessions.get(id);
         if (session) {
-            Object.assign(session, data, { lastAccess: Date.now() });
+            Object.assign(session, data, {lastAccess: Date.now()});
             return true;
         }
         return false;
@@ -51,7 +51,7 @@ class SessionStore {
     appendHistory(id: string, role: string, text: string): boolean {
         const session = this.sessions.get(id);
         if (session) {
-            session.history.push({ role, parts: [{ text }] });
+            session.history.push({role, parts: [{text}]});
             session.lastAccess = Date.now();
             return true;
         }

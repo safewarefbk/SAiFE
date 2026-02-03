@@ -1,4 +1,3 @@
-import { RiDragMove2Fill } from "react-icons/ri";
 import { ShapeComponents, ShapeType } from "../shape/types";
 import SidebarItem from "./SidebarItem";
 

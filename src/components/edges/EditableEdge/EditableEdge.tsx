@@ -1,46 +1,14 @@
-import {RefObject, useCallback, useRef, useState} from "react";
+import {RefObject} from "react";
 import {
-    BaseEdge,
     EdgeLabelRenderer,
-    useReactFlow,
-    useStore,
-    type Edge,
     type EdgeProps,
-    type XYPosition, MarkerType,
+    type XYPosition,
 } from "@xyflow/react";
-import {ControlPoint, type ControlPointData} from "./ControlPoint";
-import {getPath, getControlPoints} from "./path";
-import {Algorithm} from "./constants";
+import {getLinearPath} from "./path/straight";
 import {useDiagram} from "@/hooks/useDiagram";
+import useUndoRedo from "@/hooks/useUndoRedo";
 import useDraggableEdgeLabel from "@/hooks/useDraggableEdgeLabel";
-import {Animation} from "@/components/EdgeToolbar/EdgeToolbar";
-
-const useIdsForInactiveControlPoints = (points: ControlPointData[]) => {
-    const prevIds = useRef<string[]>([]);
-    let newPoints: ControlPointData[] = [];
-    if (prevIds.current.length === points.length) {
-        // reuse control points from last render, just update their position
-        newPoints = points.map((point, i) =>
-            point.active ? point : {...point, id: prevIds.current[i]}
-        );
-    } else {
-        // calculate new control points
-        newPoints = points.map((prevPoint, i) => {
-            const id = typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-            prevIds.current[i] = id;
-            return prevPoint.active ? points[i] : {...points[i], id};
-        });
-    }
-
-    return newPoints;
-};
-
-export type EditableEdgeData = {
-    algorithm?: Algorithm;
-    points: ControlPointData[];
-};
+import EdgeToolbar from "../../EdgeToolbar/EdgeToolbar";
 
 interface EditableEdgeProps extends EdgeProps {
     useDiagram: ReturnType<typeof useDiagram>;
@@ -49,32 +17,26 @@ interface EditableEdgeProps extends EdgeProps {
 export function EditableEdge({
                                  id,
                                  selected,
-                                 source,
                                  sourceX,
                                  sourceY,
-                                 sourcePosition,
-                                 target,
                                  targetX,
                                  targetY,
-                                 targetPosition,
                                  markerEnd,
-                                 markerStart,
                                  style,
                                  data = {points: []},
-                                 useDiagram,
-                                 ...delegated
+                                 useDiagram: diagram
                              }: EditableEdgeProps) {
-    const {setEdges} = useReactFlow();
-
+    const {takeSnapshot} = useUndoRedo();
     const sourceOrigin = {x: sourceX, y: sourceY} as XYPosition;
     const targetOrigin = {x: targetX, y: targetY} as XYPosition;
     const color = style?.stroke || "#a5a4a5";
-    const shouldShowPoints = useStore((store) => {
-        const sourceNode = store.nodeLookup.get(source as string)!;
-        const targetNode = store.nodeLookup.get(target as string)!;
 
-        return selected || sourceNode.selected || targetNode.selected;
-    });
+    // Calculate midpoint of the edge for toolbar positioning
+    const midX = (sourceX + targetX) / 2;
+    const midY = (sourceY + targetY) / 2;
+
+    // Position toolbar near the center of the edge with a small offset below
+    const toolbarY = midY + 20; // Small offset below the center, similar to NodeToolbar offset of 10
 
     const [edgePathRef, draggableEdgeLabelRef] = useDraggableEdgeLabel(
         sourceX,
@@ -85,54 +47,12 @@ export function EditableEdge({
         data.labelPosition as number
     );
 
-    const setControlPoints = useCallback(
-        (update: (points: ControlPointData[]) => ControlPointData[]) => {
-            setEdges((edges) =>
-                edges.map((e) => {
-                    if (e.id !== id) return e;
-                    if (!isEditableEdge(e)) return e;
-
-                    const points = e.data?.points ?? [];
-                    const localData = {...e.data, points: update(points)};
-
-                    return {...e, data: localData};
-                })
-            );
-            /* setTimeout(() => {
-              useDiagram.setEdges((edges) =>
-                edges.map((e) => {
-                  if (e.id !== id) return e;
-                  if (!isEditableEdge(e)) return e;
-
-                  const points = e.data?.points ?? [];
-                  const localData = { ...e.data, points: update(points) };
-
-                  return { ...e, data: localData };
-                })
-              );
-            }, 1000); */
-        },
-        [id, setEdges]
-    );
-
     let pathPoints = [
         sourceOrigin,
         ...(Array.isArray(data.points) ? data.points : []),
         targetOrigin,
     ];
-    const controlPoints = getControlPoints(
-        pathPoints,
-        data.algorithm as Algorithm | undefined,
-        {
-            fromSide: sourcePosition,
-            toSide: targetPosition,
-        }
-    );
-    const path = getPath(pathPoints, data.algorithm as Algorithm | undefined, {
-        fromSide: sourcePosition,
-        toSide: targetPosition,
-    });
-    const controlPointsWithIds = useIdsForInactiveControlPoints(controlPoints);
+    const path = getLinearPath(pathPoints);
 
     return (
         <>
@@ -195,21 +115,27 @@ export function EditableEdge({
                 </div>
             </EdgeLabelRenderer>
 
-            {shouldShowPoints &&
-                controlPointsWithIds.map((point, index) => (
-                    <ControlPoint
-                        key={point.id}
-                        index={index}
-                        setControlPoints={setControlPoints}
-                        color={`${color}`}
-                        {...point}
-                    />
-                ))}
-
+            {/* Render EdgeToolbar when this edge is selected */}
+            {selected && (
+                <EdgeLabelRenderer>
+                    <div
+                        style={{
+                            position: "absolute",
+                            left: midX,
+                            top: toolbarY,
+                            transform: "translate(-50%, 0%)",
+                            pointerEvents: "all",
+                            zIndex: 1000,
+                        }}
+                        className="nowheel nodrag flex flex-col bg-white dark:bg-slate-800 shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 p-2"
+                    >
+                        <EdgeToolbar
+                            takeSnapshot={takeSnapshot}
+                            useDiagram={diagram}
+                        />
+                    </div>
+                </EdgeLabelRenderer>
+            )}
         </>
     );
 }
-
-
-const isEditableEdge = (edge: Edge): edge is Edge<EditableEdgeData> =>
-    edge.type === "editable-edge";

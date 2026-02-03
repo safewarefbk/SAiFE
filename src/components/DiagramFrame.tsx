@@ -16,7 +16,6 @@ import {
 import "@xyflow/react/dist/style.css";
 import "./nodeStyles.css";
 import ShapeNode from "./shape-node";
-import Sidebar from "./Sidebar/Sidebar";
 import MiniMapNode from "./minimap-node";
 import {useDiagram} from "@/hooks/useDiagram";
 import {CornerUpLeft, CornerUpRight} from "react-feather";
@@ -26,26 +25,25 @@ import {
     PanelResizeHandle,
     Panel as ResizablePanel,
 } from "react-resizable-panels";
-import { 
-    detectProgrammingLanguage, 
-    getDefaultSize, 
-    getCacheKey, 
-    findRootNodes, 
-    findDirectCodeChildren 
+import {
+    detectProgrammingLanguage,
+    getDefaultSize,
+    getCacheKey,
+    findRootNodes,
+    findDirectCodeChildren
 } from "./utils/utils";
 
 
 import {useCallback, useEffect, useRef, useState} from "react";
 import {useWindowSize} from "@/hooks/useWindowSize";
-import dynamic from "next/dynamic";
 import {EditableEdge} from "./edges/EditableEdge";
-import EdgeToolbar from "./EdgeToolbar/EdgeToolbar";
 import {ConnectionLine} from "./edges/ConnectionLine";
 import savedDiagramJson from "../json-diagrams/DiagramX.json";
 import {useTheme} from "@/hooks/useTheme";
 import {Menu} from "./Menu";
 import CodeModal from "@components/CodeModal/CodeModal";
 import ProjectModal from "@components/ProjectModal/Modal";
+import Sidebar from "./Sidebar/Sidebar";
 
 
 const nodeTypes: NodeTypes = {
@@ -62,9 +60,8 @@ const Flow = () => {
     const [sessionId, setSessionId] = useState<string | null>(null);  // Server manages chat history
     const [codeLanguage, setCodeLanguage] = useState<string>("Python");
     const diagram = useDiagram();
-    const { setNodes, getNodes, getEdges } = diagram.useReactFlow();
+    const {setNodes, getNodes, getEdges} = diagram.useReactFlow();
     const {getSnapshotJson, takeSnapshot} = useUndoRedo();
-    const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(false);
     const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState<boolean>(false);
     const [width] = useWindowSize();
     const [isModalOpen, setIsModalOpen] = useState(true);
@@ -84,28 +81,31 @@ const Flow = () => {
     const [codeCache, setCodeCache] = useState<Map<string, string>>(new Map());
     const [promptCache, setPromptCache] = useState<Map<string, string>>(new Map());
     const [graphCache, setGraphCache] = useState<Map<string, number>>(new Map());
-    const [graphParentMap, setGraphParentMap] = useState<Map<number, { parentGraphIndex: number, parentNodeId: string }>>(new Map());
+    const [graphParentMap, setGraphParentMap] = useState<Map<number, {
+        parentGraphIndex: number,
+        parentNodeId: string
+    }>>(new Map());
     const [validationCache, setValidationCache] = useState<Map<string, boolean>>(new Map());
 
     const ThinkingIndicator = () => {
         const [dots, setDots] = useState('');
-        
+
         // Animation for the thinking dots while AI is processing
         useEffect(() => {
             if (!thinking) return;
-            
+
             const interval = setInterval(() => {
                 setDots(prev => {
                     if (prev === '...') return '';
                     return prev + '.';
                 });
             }, 500);
-            
+
             return () => clearInterval(interval);
         }, [thinking]);
-        
+
         if (!thinking) return null;
-        
+
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
@@ -123,12 +123,15 @@ const Flow = () => {
     const ErrorModal = () => {
         if (!error) return null;
         return (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" style={{zIndex: 99999}}>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+                 style={{zIndex: 99999}}>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
                     <div className="flex items-center space-x-3 mb-4">
                         <div className="flex-shrink-0">
                             <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                <path fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                      clipRule="evenodd"/>
                             </svg>
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -139,7 +142,7 @@ const Flow = () => {
                         {error}
                     </p>
                     <div className="flex justify-end">
-                        <button 
+                        <button
                             onClick={() => {
                                 setError("");
                             }}
@@ -169,7 +172,7 @@ const Flow = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ description, includeNonFunctional }),
+                body: JSON.stringify({description, includeNonFunctional}),
             });
 
             if (!response.ok) {
@@ -177,7 +180,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to generate diagram');
             }
 
-            const { responseText, sessionId: newSessionId } = await response.json();
+            const {responseText, sessionId: newSessionId} = await response.json();
 
             // Store sessionId - server keeps the history
             setSessionId(newSessionId);
@@ -201,8 +204,8 @@ const Flow = () => {
     const generateTaskDiagram = async (taskName: string, nodeId?: string, currentGraphIndex?: number) => {
         setThinking(true);
         setError("");
-        
-        if(taskName == "Task") {
+
+        if (taskName == "Task") {
             setError("Task name cannot be empty.");
             setThinking(false);
             return;
@@ -221,7 +224,7 @@ const Flow = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ sessionId, taskName }),
+                body: JSON.stringify({sessionId, taskName}),
             });
 
             if (!response.ok) {
@@ -229,7 +232,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to generate task diagram');
             }
 
-            const { responseText } = await response.json();
+            const {responseText} = await response.json();
 
             if (JSON.parse(responseText)) {
                 diagram.uploadJson(responseText);
@@ -237,7 +240,7 @@ const Flow = () => {
                 graphsHistory.current.push(responseText);
                 const newGraphIndex = graphsHistory.current.length - 1;
                 setGraphIndex(newGraphIndex);
-                
+
                 if (nodeId) {
                     setGraphCache(prev => new Map(prev).set(nodeId, newGraphIndex));
 
@@ -258,45 +261,45 @@ const Flow = () => {
     };
 
     // function to generate code for a single leaf node (hexagon)
-    const generateCodeForLeaf  = async (cacheKey: string, taskName: string) => {
-        try{
-                if(taskName == "Task") {
-                    setError("Task name cannot be empty.");
-                    setThinking(false);
-                    return;
+    const generateCodeForLeaf = async (cacheKey: string, taskName: string) => {
+        try {
+            if (taskName == "Task") {
+                setError("Task name cannot be empty.");
+                setThinking(false);
+                return;
+            }
+
+            setCodeModalOpen(true);
+            setCodeLoading(true);
+            setError("");
+            setCurrentCodeCacheKey(cacheKey);
+
+            if (cacheKey && codeCache.has(cacheKey)) {
+                const cachedCode = codeCache.get(cacheKey)!;
+                setGeneratedCode(cachedCode);
+                setCodeLoading(false);
+                return;
+            } else {
+                const response = await fetch('/api/llm/code/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({taskName, language: codeLanguage}),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to generate code');
                 }
 
-                setCodeModalOpen(true);
-                setCodeLoading(true);
-                setError("");
-                setCurrentCodeCacheKey(cacheKey);
+                const {code, prompt} = await response.json();
 
-                if (cacheKey && codeCache.has(cacheKey)) {
-                    const cachedCode = codeCache.get(cacheKey)!;
-                    setGeneratedCode(cachedCode);
-                    setCodeLoading(false);
-                    return;
-                } else {
-                    const response = await fetch('/api/llm/code/generate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ taskName, language: codeLanguage }),
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to generate code');
-                    }
-
-                    const { code, prompt } = await response.json();
-
-                    setCurrentOriginalPrompt(prompt);
-                    setGeneratedCode(code);
-                    setCodeCache(prev => new Map(prev).set(cacheKey, code));
-                    setPromptCache(prev => new Map(prev).set(cacheKey, prompt));
-                }
+                setCurrentOriginalPrompt(prompt);
+                setGeneratedCode(code);
+                setCodeCache(prev => new Map(prev).set(cacheKey, code));
+                setPromptCache(prev => new Map(prev).set(cacheKey, prompt));
+            }
         } catch (e) {
             console.error("API Error:", e);
             if (e instanceof Error) {
@@ -304,8 +307,7 @@ const Flow = () => {
             } else {
                 setError("An error occurred while generating the code. Please try again.");
             }
-        }
-        finally {
+        } finally {
             setCodeLoading(false);
         }
     }
@@ -333,7 +335,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to regenerate code');
             }
 
-            const { code } = await response.json();
+            const {code} = await response.json();
 
             setGeneratedCode(code);
             setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, code));
@@ -384,7 +386,7 @@ const Flow = () => {
                 return false;
             }
 
-            const childrenCode: Array<{taskName: string, code: string, type: string}> = [];
+            const childrenCode: Array<{ taskName: string, code: string, type: string }> = [];
             let missingCode = false;
 
             for (const childNode of childNodes) {
@@ -394,7 +396,7 @@ const Flow = () => {
                     const code = codeCache.get(childCacheKey)!;
                     const taskName = String(childNode.data.contents || "Unknown");
                     const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
-                    childrenCode.push({ taskName, code, type: nodeType });
+                    childrenCode.push({taskName, code, type: nodeType});
                 } else {
                     missingCode = true;
                     console.warn(`Missing code for child node: ${childNode.id} (type: ${childNode.data?.type})`);
@@ -433,7 +435,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to aggregate code');
             }
 
-            const { code, prompt } = await response.json();
+            const {code, prompt} = await response.json();
 
             setGeneratedCode(code);
             setCodeCache(prev => new Map(prev).set(cacheKey, code));
@@ -499,7 +501,7 @@ const Flow = () => {
                 return false;
             }
 
-            const childrenCode: Array<{taskName: string, code: string, type: string}> = [];
+            const childrenCode: Array<{ taskName: string, code: string, type: string }> = [];
             let missingCode = false;
 
             for (const childNode of childNodes) {
@@ -509,7 +511,7 @@ const Flow = () => {
                     const code = codeCache.get(childCacheKey)!;
                     const taskName = String(childNode.data.contents || "Unknown");
                     const nodeType = childNode.data?.type === "circle" ? "Goal" : "Task";
-                    childrenCode.push({ taskName, code, type: nodeType });
+                    childrenCode.push({taskName, code, type: nodeType});
                 } else {
                     missingCode = true;
                     console.warn(`Missing code for child node: ${childNode.id} (type: ${childNode.data?.type})`);
@@ -548,7 +550,7 @@ const Flow = () => {
                 throw new Error(errorData.error || 'Failed to aggregate root code');
             }
 
-            const { code, prompt } = await response.json();
+            const {code, prompt} = await response.json();
 
             setGeneratedCode(code);
             setCodeCache(prev => new Map(prev).set(cacheKey, code));
@@ -569,14 +571,6 @@ const Flow = () => {
         }
     };
 
-    const toggleRightSidebar = () => {
-        setIsRightSidebarOpen(!isRightSidebarOpen);
-    };
-
-    const toggleLeftSidebar = () => {
-        setIsLeftSidebarOpen(!isLeftSidebarOpen);
-    };
-
     const EditableEdgeWrapper = useCallback(
         (props: EdgeProps) => {
             return <EditableEdge {...props} useDiagram={diagram}/>;
@@ -591,7 +585,7 @@ const Flow = () => {
         const cacheKey = getCacheKey(currentGraphIndex, nodeId);
 
         setTimeout(() => {
-        generateCodeForLeaf(cacheKey, taskName);
+            generateCodeForLeaf(cacheKey, taskName);
         }, 200);
 
         setTimeout(() => {
@@ -682,7 +676,7 @@ const Flow = () => {
     useEffect(() => {
         const handleAggregateCodeEvent = (event: Event) => {
             const customEvent = event as CustomEvent<{ circleNodeId: string }>;
-            const { circleNodeId } = customEvent.detail;
+            const {circleNodeId} = customEvent.detail;
             const currentGraphIndex = graphIndexRef.current;
             const rootNodes = findRootNodes(getNodes(), getEdges());
             const isRootNode = rootNodes.some(node => node.id === circleNodeId);
@@ -705,7 +699,7 @@ const Flow = () => {
     useEffect(() => {
         const handleGenerateCodeEvent = (event: Event) => {
             const customEvent = event as CustomEvent<{ hexagonNodeId: string; taskName: string }>;
-            const { hexagonNodeId, taskName } = customEvent.detail;
+            const {hexagonNodeId, taskName} = customEvent.detail;
             const currentGraphIndex = graphIndexRef.current;
             handleGenerateCodeFromTask(taskName, hexagonNodeId, currentGraphIndex);
         };
@@ -721,7 +715,7 @@ const Flow = () => {
     useEffect(() => {
         const handleGenerateGraphEvent = (event: Event) => {
             const customEvent = event as CustomEvent<{ hexagonNodeId: string; taskName: string }>;
-            const { hexagonNodeId, taskName } = customEvent.detail;
+            const {hexagonNodeId, taskName} = customEvent.detail;
             const currentGraphIndex = graphIndexRef.current;
             handleGenerateGraphFromTask(taskName, hexagonNodeId, currentGraphIndex);
         };
@@ -778,8 +772,8 @@ const Flow = () => {
 
     return (
         <div className="w-full h-full">
-            <ThinkingIndicator />
-            <ErrorModal />
+            <ThinkingIndicator/>
+            <ErrorModal/>
             {isModalOpen &&
                 <ProjectModal
                     onSubmit={handleModalSubmit}
@@ -849,14 +843,6 @@ const Flow = () => {
                                 <Panel position="top-left">
                                     <Sidebar/>
                                 </Panel>
-                                {diagram.editingEdgeId ? (
-                                    <Panel position="top-center">
-                                        <EdgeToolbar
-                                            takeSnapshot={takeSnapshot}
-                                            useDiagram={diagram}
-                                        />
-                                    </Panel>
-                                ) : null}
                                 <Panel position="top-right">
                                     <Menu
                                         themeHook={themeHook}

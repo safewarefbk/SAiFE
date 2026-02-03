@@ -1,4 +1,4 @@
-import { getCodeModel, HumanMessage } from './models';
+import {getCodeModel, HumanMessage} from './models';
 
 // System context is embedded in prompts since Mistral Codestral works best this way
 const CODE_CONTEXT = `Senior software engineer. OWASP/CWE compliant. Output ONLY code.`;
@@ -26,7 +26,7 @@ export class CodeAgent {
             ? response.content
             : String(response.content);
 
-        return { code, prompt };
+        return {code, prompt};
     }
 
     /**
@@ -50,7 +50,7 @@ export class CodeAgent {
             ? response.content
             : String(response.content);
 
-        return { code };
+        return {code};
     }
 
     /**
@@ -90,7 +90,7 @@ export class CodeAgent {
             ? response.content
             : String(response.content);
 
-        return { code, prompt };
+        return {code, prompt};
     }
 }
 

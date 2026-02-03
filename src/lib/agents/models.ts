@@ -1,6 +1,6 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatMistralAI } from "@langchain/mistralai";
-import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import {ChatGoogleGenerativeAI} from "@langchain/google-genai";
+import {ChatMistralAI} from "@langchain/mistralai";
+import {HumanMessage, AIMessage, BaseMessage} from "@langchain/core/messages";
 
 /**
  * Model factory with system prompts built-in
@@ -18,7 +18,7 @@ export function getDiagramModel(): ChatGoogleGenerativeAI {
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
         geminiDiagramModel = new ChatGoogleGenerativeAI({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-flash-lite",
             // temperature: 0.7,
             apiKey,
             // maxOutputTokens: 65365,
@@ -56,5 +56,5 @@ export function historyToMessages(
     });
 }
 
-export { HumanMessage, AIMessage };
+export {HumanMessage, AIMessage};
 
