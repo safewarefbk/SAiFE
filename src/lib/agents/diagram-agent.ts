@@ -1,20 +1,31 @@
 import {getDiagramModel, HumanMessage, historyToMessages} from './models';
 import {sessionStore} from './session-store';
 
+// Removed prompt due to disabling non-functional requirements
+// NODE TYPES:
+//- Round-rectangle = soft-goal
+// RULES:
+// - Tasks→AND→goals; goals→AND→soft-goals
+// - Soft-goal edges: dotted with "+" or "-" label; others: solid
+
 const DIAGRAM_SYSTEM_PROMPT = `Generate an Initial Requirements Model as JSON with {nodes, edges}.
 
-NODE TYPES: circle=goal, capsule=AND, hexagon=task, round-rectangle=soft-goal
+NODE TYPES: 
+- Circle = goal, 
+- Capsule = AND, 
+- Hexagon = task
 
 RULES:
 - Keep high-level: tasks should remain broad (will be expanded later)
-- Single root circle; all nodes need parent
-- Tasks→circles; soft-goals→tasks
-- Circle needs 2+ tasks (else use 1 task)
-- AND capsule only when 2+ children
-- No duplicate edges; no overlapping nodes/edges
+- Single root circle; all other nodes need a parent
+- Tasks→AND→goals
+- Goal needs 2+ tasks (else use 1 task)
+- AND capsule always when 2+ children
+- No duplicate edges; NO overlapping nodes/edges
 - X spacing ≥400px; edge length ≥30px
 - Include cybersecurity requirements
 - Short text; color #438D57; width/height as numbers
+
 EXAMPLE:
 {"nodes":[{"id":"1","type":"shape","position":{"x":400,"y":50},"style":{"width":200,"height":70},"data":{"type":"circle","contents":"OrderFoodOnline","color":"#438D57"}},{"id":"2","type":"shape","position":{"x":400,"y":180},"style":{"width":42,"height":22},"data":{"type":"capsule","contents":"AND","color":"#438D57"}},{"id":"3","type":"shape","position":{"x":200,"y":300},"style":{"width":200,"height":70},"data":{"type":"circle","contents":"BrowseMenu","color":"#438D57"}}],"edges":[{"type":"editable-edge","style":{"strokeWidth":2},"source":"2","sourceHandle":"top","target":"1","targetHandle":"bottom","id":"xy-edge__2top-1bottom"},{"type":"editable-edge","style":{"strokeWidth":2},"source":"3","sourceHandle":"top","target":"2","targetHandle":"bottom","id":"xy-edge__3top-2bottom"}]}
 
