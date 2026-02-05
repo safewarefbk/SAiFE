@@ -1,9 +1,8 @@
 "use client";
-import React, {useMemo, useState, useEffect} from "react";
-import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
-import {oneDark, oneLight} from 'react-syntax-highlighter/dist/esm/styles/prism';
+import React, {useState, useEffect} from "react";
 import {useTheme} from '@/hooks/useTheme';
 import {Edit, Check, X, RefreshCw} from 'react-feather';
+import MonacoEditor from '@monaco-editor/react';
 
 interface CodeModalProps {
     isOpen: boolean;
@@ -56,9 +55,6 @@ const CodeModal: React.FC<CodeModalProps> = ({
         return () => clearInterval(interval);
     }, [isLoading]);
 
-    let language = codeLanguage?.toLowerCase();
-    if (language === 'c#') language = 'csharp';
-    if (language === 'c++') language = 'cpp';
 
     if (!isOpen) return null;
 
@@ -187,36 +183,27 @@ const CodeModal: React.FC<CodeModalProps> = ({
                         <div className="flex h-40 items-center justify-center text-slate-500">
                             Thinking{dots}
                         </div>
-                    ) : isEditing ? (
-                        <textarea
-                            value={editedCode}
-                            onChange={(e) => setEditedCode(e.target.value)}
-                            className="w-full resize-none border-none bg-white p-4 font-mono text-sm leading-relaxed text-black focus:outline-none dark:bg-gray-900 dark:text-white"
-                            style={{
-                                minHeight: '500px',
-                                fontFamily: 'Monaco, Menlo, Courier, monospace',
-                                lineHeight: '1.6',
-                                tabSize: 2
-                            }}
-                            spellCheck={false}
-                        />
                     ) : (
-                        <SyntaxHighlighter
-                            language={language}
-                            style={themeHook.theme === 'dark' ? oneDark : oneLight}
-                            customStyle={{
-                                margin: 0,
-                                padding: '16px',
-                                fontSize: '14px',
-                                lineHeight: '1.5',
-                                borderRadius: '6px',
-                            }}
-                            showLineNumbers={true}
-                            wrapLines={true}
-                            wrapLongLines={true}
-                        >
-                            {code}
-                        </SyntaxHighlighter>
+                        <div style={{ height: '500px', minHeight: '500px' }}>
+                            <MonacoEditor
+                                height="100%"
+                                defaultLanguage={codeLanguage}
+                                language={codeLanguage}
+                                value={isEditing ? editedCode : code}
+                                onChange={val => isEditing && setEditedCode(val ?? '')}
+                                theme={themeHook.theme === 'dark' ? 'vs-dark' : 'light'}
+                                options={{
+                                    fontSize: 14,
+                                    fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+                                    minimap: { enabled: false },
+                                    scrollBeyondLastLine: false,
+                                    wordWrap: 'on',
+                                    lineNumbers: 'on',
+                                    automaticLayout: true,
+                                    readOnly: !isEditing,
+                                }}
+                            />
+                        </div>
                     )}
                 </div>
             </div>
