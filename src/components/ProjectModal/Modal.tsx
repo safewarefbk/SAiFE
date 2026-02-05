@@ -46,19 +46,20 @@ const ProjectModal = ({onSubmit}: ModalProps) => {
                                             }
                                         }}
                                         rows={3}></textarea>
-                                    <div className="flex items-center mt-2">
-                                        <input
-                                            id="include-non-functional"
-                                            type="checkbox"
-                                            checked={includeNonFunctional}
-                                            onChange={e => setIncludeNonFunctional(e.target.checked)}
-                                            className="mr-2"
-                                        />
-                                        <label htmlFor="include-non-functional" className="text-sm text-gray-700">
-                                            Include non-functional requirements
-                                        </label>
+                                    {/* Disable non-functional requirements */}
+                                    {/*<div className="flex items-center mt-2">*/}
+                                    {/*    <input*/}
+                                    {/*        id="include-non-functional"*/}
+                                    {/*        type="checkbox"*/}
+                                    {/*        checked={includeNonFunctional}*/}
+                                    {/*        onChange={e => setIncludeNonFunctional(e.target.checked)}*/}
+                                    {/*        className="mr-2"*/}
+                                    {/*    />*/}
+                                    {/*    <label htmlFor="include-non-functional" className="text-sm text-gray-700">*/}
+                                    {/*        Include non-functional requirements*/}
+                                    {/*    </label>*/}
 
-                                    </div>
+                                    {/*</div>*/}
                                 </div>
                             </div>
                         </div>

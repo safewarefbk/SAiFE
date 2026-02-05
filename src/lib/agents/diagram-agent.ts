@@ -11,7 +11,6 @@ RULES:
 - Tasks→circles; soft-goals→tasks
 - Circle needs 2+ tasks (else use 1 task)
 - AND capsule only when 2+ children
-- Soft-goal edges: dotted with "+" or "-" label; others: solid
 - No duplicate edges; no overlapping nodes/edges
 - X spacing ≥400px; edge length ≥30px
 - Include cybersecurity requirements
