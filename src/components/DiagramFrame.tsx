@@ -581,6 +581,16 @@ const Flow = () => {
         "editable-edge": EditableEdgeWrapper,
     };
 
+    // Function to save the current graph state to history
+    const handleSaveGraphToHistory = useCallback(() => {
+        const currentGraph = getSnapshotJson();
+        const currentIndex = graphIndexRef.current;
+
+        if (currentGraph && currentIndex >= 0) {
+            graphsHistory.current[currentIndex] = currentGraph;
+        }
+    }, [getSnapshotJson]);
+
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
         const cacheKey = getCacheKey(currentGraphIndex, nodeId);
 
@@ -589,11 +599,9 @@ const Flow = () => {
         }, 200);
 
         setTimeout(() => {
-
-            const event = new CustomEvent('saveGraphToHistory');
-            window.dispatchEvent(event);
+            handleSaveGraphToHistory();
         }, 200);
-    }, [generateCodeForLeaf]);
+    }, [generateCodeForLeaf, handleSaveGraphToHistory]);
 
 
     const handleGenerateGraphFromTask = useCallback((taskName: string, nodeId: string, currentGraphIndex: number) => {
@@ -614,21 +622,19 @@ const Flow = () => {
         const success = await aggregateCode(circleNodeId, currentGraphIndex);
         if (success) {
             setTimeout(() => {
-                const event = new CustomEvent('saveGraphToHistory');
-                window.dispatchEvent(event);
+                handleSaveGraphToHistory();
             }, 200);
         }
-    }, [aggregateCode]);
+    }, [aggregateCode, handleSaveGraphToHistory]);
 
     const handleAggregateCodeFromRoot = useCallback(async (rootNodeId: string, currentGraphIndex: number) => {
         const success = await aggregateCodeFromRoot(rootNodeId, currentGraphIndex);
         if (success) {
             setTimeout(() => {
-                const event = new CustomEvent('saveGraphToHistory');
-                window.dispatchEvent(event);
+                handleSaveGraphToHistory();
             }, 200);
         }
-    }, [aggregateCodeFromRoot]);
+    }, [aggregateCodeFromRoot, handleSaveGraphToHistory]);
 
 
     const handleValidateCode = () => {
@@ -654,23 +660,14 @@ const Flow = () => {
         }
     };
 
-    // Event listener to save the current graph state to history
+    // Event listener to save the current graph state to history (for external dispatchers)
     useEffect(() => {
-        const handleSaveGraphToHistory = () => {
-            const currentGraph = getSnapshotJson();
-            const currentIndex = graphIndexRef.current;
-
-            if (currentGraph && currentIndex >= 0) {
-                graphsHistory.current[currentIndex] = currentGraph;
-            }
-        };
-
         window.addEventListener('saveGraphToHistory', handleSaveGraphToHistory);
 
         return () => {
             window.removeEventListener('saveGraphToHistory', handleSaveGraphToHistory);
         };
-    }, [getSnapshotJson]);
+    }, [handleSaveGraphToHistory]);
 
     // Event listener for "Aggregate Code" button clicks on circle nodes
     useEffect(() => {
