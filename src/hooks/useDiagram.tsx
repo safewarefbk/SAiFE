@@ -34,7 +34,7 @@ export const useDiagram = () => {
         getEdge,
         getNodes,
     } = useReactFlow();
-    const {undo, redo, canUndo, canRedo, takeSnapshot} = useUndoRedo();
+    const {undo, redo, canUndo, canRedo, takeSnapshot} = useUndoRedo({enableShortcuts: true});
     const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
     const connectingNodeId = useRef(null);
     const {
@@ -114,7 +114,6 @@ export const useDiagram = () => {
             data: {
                 type,
                 contents: type === "capsule" ? "AND" : "",
-                color: "#438D57",
             },
             selected: true,
         };
@@ -167,6 +166,12 @@ export const useDiagram = () => {
                 },
             };
             setEdges((edges) => addEdge({...edge, type: "editable-edge"}, edges));
+
+            // Trigger save to database after edge creation
+            setTimeout(() => {
+                const event = new CustomEvent('saveGraphToHistory');
+                window.dispatchEvent(event);
+            }, 100);
         },
         [setEdges, takeSnapshot]
     );
@@ -206,10 +211,22 @@ export const useDiagram = () => {
 
     const onNodesDelete: OnNodesDelete = useCallback(() => {
         takeSnapshot();
+
+        // Trigger save to database after node deletion
+        setTimeout(() => {
+            const event = new CustomEvent('saveGraphToHistory');
+            window.dispatchEvent(event);
+        }, 100);
     }, [takeSnapshot]);
 
     const onEdgesDelete: OnEdgesDelete = useCallback(() => {
         takeSnapshot();
+
+        // Trigger save to database after edge deletion
+        setTimeout(() => {
+            const event = new CustomEvent('saveGraphToHistory');
+            window.dispatchEvent(event);
+        }, 100);
     }, [takeSnapshot]);
 
     const onPaneClick = useCallback(() => {

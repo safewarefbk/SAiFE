@@ -1,132 +1,140 @@
 import {getDiagramModel, HumanMessage, historyToMessages} from './models';
-import {sessionStore} from './session-store';
+import {applyTreeLayout} from '@/lib/tree-layout';
 
-// Removed prompt due to disabling non-functional requirements
 // NODE TYPES:
 //- Round-rectangle = soft-goal
 // RULES:
 // - Tasks→AND→goals; goals→AND→soft-goals
 // - Soft-goal edges: dotted with "+" or "-" label; others: solid
 
-const DIAGRAM_SYSTEM_PROMPT = `Generate an Initial Requirements Model as JSON with {nodes, edges}.
-
-NODE TYPES: 
-- Circle = goal, 
-- Capsule = AND, 
-- Hexagon = task
-
-RULES:
-- Keep high-level: tasks should remain broad (will be expanded later)
-- Single root circle; all other nodes need a parent
-- Tasks→AND→goals
-- Goal needs 2+ tasks (else use 1 task)
-- AND capsule always when 2+ children
-- No duplicate edges; NO overlapping nodes/edges
-- X spacing ≥400px; edge length ≥30px
-- Include cybersecurity requirements
-- Short text; color #438D57; width/height as numbers
-
-EXAMPLE:
-{"nodes":[{"id":"1","type":"shape","position":{"x":400,"y":50},"style":{"width":200,"height":70},"data":{"type":"circle","contents":"OrderFoodOnline","color":"#438D57"}},{"id":"2","type":"shape","position":{"x":400,"y":180},"style":{"width":42,"height":22},"data":{"type":"capsule","contents":"AND","color":"#438D57"}},{"id":"3","type":"shape","position":{"x":200,"y":300},"style":{"width":200,"height":70},"data":{"type":"circle","contents":"BrowseMenu","color":"#438D57"}}],"edges":[{"type":"editable-edge","style":{"strokeWidth":2},"source":"2","sourceHandle":"top","target":"1","targetHandle":"bottom","id":"xy-edge__2top-1bottom"},{"type":"editable-edge","style":{"strokeWidth":2},"source":"3","sourceHandle":"top","target":"2","targetHandle":"bottom","id":"xy-edge__3top-2bottom"}]}
-
-Output JSON only.`;
-
 /**
  * Extract clean JSON from LLM response (handles markdown code blocks)
  */
 function extractJson(text: string): string {
-    // Remove markdown code blocks if present
     let cleaned = text.trim();
-
-    // Handle ```json ... ``` or ``` ... ```
     const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlockMatch) {
         cleaned = codeBlockMatch[1].trim();
     }
-
-    // Try to find JSON object/array boundaries
     const jsonStart = cleaned.indexOf('{');
     const jsonEnd = cleaned.lastIndexOf('}');
-
     if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
         cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
     }
-
     return cleaned;
 }
 
 /**
- * Agent for generating requirements diagrams
+ * Post-process diagram JSON:
+ *  1. Add required flags (collapsed)
+ *  2. Compute tree layout positions (the LLM returns {x:0,y:0} for every node)
+ */
+function postProcessDiagramJson(jsonString: string): string {
+    try {
+        const diagram = JSON.parse(jsonString);
+        if (diagram.nodes && Array.isArray(diagram.nodes)) {
+            diagram.nodes = diagram.nodes.map((node: any) => {
+                if (!node.data) node.data = {};
+                if (node.data.collapsed === undefined) node.data.collapsed = false;
+                return node;
+            });
+        }
+
+        // Compute hierarchical tree positions from the structural edges
+        applyTreeLayout(diagram);
+
+        return JSON.stringify(diagram);
+    } catch (e) {
+        console.error('Failed to post-process diagram JSON:', e);
+        return jsonString;
+    }
+}
+
+/**
+ * Agent for generating requirements diagrams.
+ * Pure LLM interaction — no DB logic. All DB operations are the caller's responsibility.
  */
 export class DiagramAgent {
 
     /**
-     * Start a new diagram generation session
+     * Start a new diagram generation session.
+     * Returns the generated diagram JSON and the user/model messages to be stored by the caller.
      */
-    async startSession(description: string, includeNonFunctional: boolean): Promise<{
-        sessionId: string;
+    async startSession(
+        description: string,
+        includeNonFunctional: boolean
+    ): Promise<{
         diagram: string;
+        userMessage: string;
+        modelMessage: string;
     }> {
-        const model = getDiagramModel();
+        const model = await getDiagramModel();
 
-        const nonFunctionalInstruction = includeNonFunctional
-            ? "Include non-functional requirements (soft-goals)." : "Exclude all soft-goal nodes.";
         const descriptionOrDefault = description || "Create requirements for a random software project.";
+        const fullPrompt = `Model the system described as: ${descriptionOrDefault}`;
 
-        const fullPrompt = `${DIAGRAM_SYSTEM_PROMPT} ${nonFunctionalInstruction}` +
-            `\nThe system to be modeled is described as: ${descriptionOrDefault}`;
+        const response = await model.invoke({messages: [new HumanMessage(fullPrompt)]});
+        const lastMessage = response.messages[response.messages.length - 1];
+        const rawResponse = typeof lastMessage.content === 'string'
+            ? lastMessage.content
+            : JSON.stringify(lastMessage.content);
 
-        const response = await model.invoke([new HumanMessage(fullPrompt)]);
-        const rawResponse = typeof response.content === 'string'
-            ? response.content
-            : JSON.stringify(response.content);
+        const cleanedJson = extractJson(rawResponse);
+        const responseText = postProcessDiagramJson(cleanedJson);
 
-        const responseText = extractJson(rawResponse);
-
-        // Create session and store history on server
-        const sessionId = sessionStore.create({
-            projectDescription: descriptionOrDefault,
-            history: [
-                {role: "user", parts: [{text: fullPrompt}]},
-                {role: "model", parts: [{text: responseText}]}
-            ]
-        });
-
-        return {sessionId, diagram: responseText};
+        return {
+            diagram: responseText,
+            userMessage: fullPrompt,
+            modelMessage: responseText,
+        };
     }
 
     /**
-     * Expand a task into a sub-diagram
+     * Expand a task into a sub-diagram.
+     * Receives conversation history from the caller (loaded from DB).
+     * Returns the generated diagram JSON and the user/model messages to be stored by the caller.
+     * @param userInstructions - Optional user-provided instructions for the expansion.
      */
-    async expandTask(sessionId: string, taskName: string): Promise<{
+    async expandTask(
+        taskName: string,
+        history: Array<{ role: string; parts: Array<{ text: string }> }>,
+        userInstructions?: string
+    ): Promise<{
         diagram: string;
+        userMessage: string;
+        modelMessage: string;
     }> {
-        const session = sessionStore.get(sessionId);
-        if (!session) {
-            throw new Error("Session not found or expired");
+        if (history.length === 0) {
+            throw new Error("No conversation history provided. Session may not have been initialized properly.");
         }
 
-        const model = getDiagramModel();
+        const model = await getDiagramModel();
 
-        const taskPrompt = `Expand task "${taskName}" into sub-graph.` +
-            `\nRules: leaf tasks must be more specific than parent, same format, task name as root, exclude unrelated. JSON only.`;
+        let taskPrompt = `Consider task "${taskName}" a goal and expand it.` +
+            `\nRules: leaf tasks must be more specific than parent, same format, exclude unrelated.` +
+            `\nJSON only with task name as root`;
 
-        // Build messages from stored history
-        const historyMessages = historyToMessages(session.history);
+        if (userInstructions) {
+            taskPrompt += `\nAdditional instructions: ${userInstructions}`;
+        }
+
+        const historyMessages = historyToMessages(history);
         const messages = [...historyMessages, new HumanMessage(taskPrompt)];
 
-        const response = await model.invoke(messages);
-        const rawResponse = typeof response.content === 'string'
-            ? response.content
-            : JSON.stringify(response.content);
+        const response = await model.invoke({messages});
+        const lastMessage = response.messages[response.messages.length - 1];
+        const rawResponse = typeof lastMessage.content === 'string'
+            ? lastMessage.content
+            : JSON.stringify(lastMessage.content);
 
-        const responseText = extractJson(rawResponse);
+        const cleanedJson = extractJson(rawResponse);
+        const responseText = postProcessDiagramJson(cleanedJson);
 
-        // Update session history on server
-        sessionStore.appendHistory(sessionId, "user", taskPrompt);
-        sessionStore.appendHistory(sessionId, "model", responseText);
-
-        return {diagram: responseText};
+        return {
+            diagram: responseText,
+            userMessage: taskPrompt,
+            modelMessage: responseText,
+        };
     }
 }
 

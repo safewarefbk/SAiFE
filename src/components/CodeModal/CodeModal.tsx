@@ -9,6 +9,7 @@ interface CodeModalProps {
     onClose: () => void;
     code: string;
     isLoading?: boolean;
+    isValidated?: boolean;
     onCodeUpdate?: (newCode: string) => void;
     onRegenerate?: (additionalPrompt: string) => void;
     onValidate?: () => void;
@@ -20,6 +21,7 @@ const CodeModal: React.FC<CodeModalProps> = ({
                                                  onClose,
                                                  code,
                                                  isLoading,
+                                                 isValidated,
                                                  onCodeUpdate,
                                                  onRegenerate,
                                                  onValidate,
@@ -121,10 +123,14 @@ const CodeModal: React.FC<CodeModalProps> = ({
                             <>
                                 <button
                                     onClick={onValidate}
-                                    className="flex items-center gap-1 rounded-md bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
+                                    className={`flex items-center gap-1 rounded-md px-3 py-1 text-sm text-white ${
+                                        isValidated
+                                            ? 'bg-orange-500 hover:bg-orange-600'
+                                            : 'bg-green-600 hover:bg-green-700'
+                                    }`}
                                 >
                                     <Check size={14}/>
-                                    Validate Code
+                                    {isValidated ? 'Invalidate' : 'Validate Code'}
                                 </button>
                                 <button
                                     onClick={copyToClipboard}

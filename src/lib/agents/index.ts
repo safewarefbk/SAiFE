@@ -9,5 +9,4 @@
 
 export {diagramAgent, DiagramAgent} from './diagram-agent';
 export {codeAgent, CodeAgent} from './code-agent';
-export {sessionStore} from './session-store';
 

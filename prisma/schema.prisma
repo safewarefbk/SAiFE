@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Session table - stores session identifiers
+model Session {
+  id                  String   @id @default(cuid())
+  sessionIdentifier   String   @unique
+  projectDescription  String?
+  language            String?
+  createdAt           DateTime @default(now())
+  lastAccess          DateTime @updatedAt
+
+  nodes               Node[]
+  edges               Edge[]
+  codes               Code[]
+  diagramHistory      DiagramHistory[]
+
+  @@map("sessions")
+}
+
+// DiagramHistory table - stores LLM conversation history
+model DiagramHistory {
+  id          Int      @id @default(autoincrement())
+  sessionId   String
+  role        String   // "user" or "model"
+  content     String   // The actual message content
+  createdAt   DateTime @default(now())
+
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("diagram_history")
+}
+
+// Code table - stores associated code snippets/logic
+model Code {
+  id              String   @id @default(cuid())
+  sessionId       String
+  nodeId          String   // The node this code belongs to
+  code            String 
+  prompt          String?
+  language        String
+  isValidated     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nodes           Node[]
+
+  @@unique([sessionId, nodeId])
+  @@index([sessionId])
+  @@map("codes")
+}
+
+// Node table - stores graph node data with explicit columns
+model Node {
+  dbId        Int      @id @default(autoincrement())
+  id          String   // React Flow node ID
+  sessionId   String
+
+  // Position
+  positionX   Float
+  positionY   Float
+
+  // Node data
+  shapeType   String?  // "hexagon", "circle", "round-rectangle", "capsule"
+  contents    String?  // The text/label of the node
+  collapsed   Boolean  @default(false)  // Collapse state for goals
+
+  // Dimensions
+  width       Int?
+  height      Int?
+
+  // Visual state
+  hidden      Boolean  @default(false)  // For collapse/expand functionality
+
+  // Foreign key to code
+  codeId      String?  // Optional reference to associated code
+  code        Code?    @relation(fields: [codeId], references: [id], onDelete: SetNull)
+
+  // User prompt used when expanding this task into a subgraph (null if never expanded)
+  expandPrompt String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, id])
+  @@index([sessionId])
+  @@index([codeId])
+  @@map("nodes")
+}
+
+// Edge table - stores graph edge relationships with explicit columns
+// NOTE: source/target reference React Flow node IDs but are NOT foreign keys.
+// React Flow IDs are scoped by session via the composite unique on Node,
+// and subgraph integration remaps IDs across namespaces, making a composite FK fragile.
+model Edge {
+  dbId            Int      @id @default(autoincrement())
+  id              String   // React Flow edge ID
+  sessionId       String
+  source          String
+  target          String
+  label           String?
+
+  // Style: only strokeDasharray varies (solid vs dotted); others are constant app defaults
+  strokeDasharray String?  // e.g., "5,5" for dashed lines
+
+  // Visual state
+  hidden          Boolean  @default(false)  // For collapse/expand functionality
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, id])
+  @@index([sessionId])
+  @@map("edges")
+}

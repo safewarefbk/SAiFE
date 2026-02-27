@@ -3,13 +3,12 @@ import { codeAgent } from "@/lib/agents";
 
 export async function POST(req: Request) {
     try {
-        const { type, goal, childrenCode, language, projectDescription } = await req.json();
+        const { type, goal, childrenCode, projectDescription } = await req.json();
 
         const { code, prompt } = await codeAgent.aggregate(
             type,
             goal,
             childrenCode,
-            language,
             projectDescription
         );
 
