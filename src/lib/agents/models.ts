@@ -7,8 +7,8 @@ import {HumanMessage, AIMessage, BaseMessage} from "@langchain/core/messages";
  * Model factory with system prompts built-in
  */
 
-let geminiDiagramModel: ChatGoogleGenerativeAI | null = null;
-let mistralCodeModel: ChatMistralAI | null = null;
+let geminiProModel: ChatGoogleGenerativeAI | null = null;
+let geminiFlashModel: ChatGoogleGenerativeAI | null = null;
 
 
 const DIAGRAM_MODEL_SYSTEM_PROMPT = `You are a Senior Secure Software Architect and your task is to generate a Goal Model as JSON with {nodes, edges}.
@@ -44,23 +44,23 @@ const CODE_MODEL_SYSTEM_PROMPT = `You are a Senior Secure Software Architect who
     `by Default. Output ONLY code.`
 
 /**
- * Gemini model for diagram generation - includes system prompt
+ * Gemini Pro model for diagram generation - includes system prompt
  */
-export function getGeminiModel(): ChatGoogleGenerativeAI {
-    if (!geminiDiagramModel) {
+export function getGeminiProModel(): ChatGoogleGenerativeAI {
+    if (!geminiProModel) {
         const apiKey = process.env.NEXT_PUBLIC_API_KEY;
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
-        geminiDiagramModel = new ChatGoogleGenerativeAI({
-            model: "gemini-2.5-flash",
+        geminiProModel = new ChatGoogleGenerativeAI({
+            model: "gemini-3.1-pro-preview",
             apiKey,
         });
     }
-    return geminiDiagramModel;
+    return geminiProModel;
 }
 
 export async function getDiagramModel() {
-    const model = getGeminiModel();
+    const model = getGeminiProModel();
     return createAgent({
         model,
         tools: [],
@@ -69,24 +69,23 @@ export async function getDiagramModel() {
 }
 
 /**
- * Mistral Codestral model for code generation - includes system prompt
+ * Gemini Flash model for code generation - includes system prompt
  */
-export function getMistralModel(): ChatMistralAI {
-    if (!mistralCodeModel) {
-        const apiKey = process.env.NEXT_PUBLIC_MISTRAL_API_KEY;
-        if (!apiKey) throw new Error("MISTRAL API key not configured");
+export function getGeminiFlashModel(): ChatGoogleGenerativeAI {
+    if (!geminiFlashModel) {
+        const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+        if (!apiKey) throw new Error("GEMINI API key not configured");
 
-        mistralCodeModel = new ChatMistralAI({
-            model: "codestral-latest",
+        geminiFlashModel = new ChatGoogleGenerativeAI({
+            model: "gemini-3-flash-preview",
             apiKey,
         });
     }
-
-    return mistralCodeModel;
+    return geminiFlashModel;
 }
 
 export async function getCodeModel() {
-    const model = getMistralModel();
+    const model = getGeminiFlashModel();
     return createAgent({
         model,
         tools: [],
