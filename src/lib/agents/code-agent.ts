@@ -1,4 +1,5 @@
 import {getCodeModel, HumanMessage} from './models';
+import {logTokenUsage} from '@/lib/utils';
 
 /**
  * Agent for generating and modifying code.
@@ -23,6 +24,7 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
+        logTokenUsage('code/generate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
@@ -50,6 +52,7 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
+        logTokenUsage('code/regenerate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
@@ -93,6 +96,7 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
+        logTokenUsage('code/aggregate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);

@@ -149,3 +149,21 @@ export function detectProgrammingLanguage(text: string): string {
     // Fallback
     return 'python';
 }
+
+/**
+ * Logs token usage from an AIMessage's usage_metadata to the console.
+ * Fields printed when available: input, output, cache_read, thinking, total.
+ */
+export function logTokenUsage(label: string, message: any): void {
+    const usage = message?.usage_metadata;
+    if (!usage) return;
+    const parts: string[] = [];
+    if (usage.input_tokens !== undefined)  parts.push(`input=${usage.input_tokens}`);
+    if (usage.output_tokens !== undefined) parts.push(`output=${usage.output_tokens}`);
+    if (usage.input_token_details?.cache_read !== undefined)
+        parts.push(`cache_read=${usage.input_token_details.cache_read}`);
+    if (usage.output_token_details?.reasoning !== undefined)
+        parts.push(`thinking=${usage.output_token_details.reasoning}`);
+    if (usage.total_tokens !== undefined)  parts.push(`total=${usage.total_tokens}`);
+    console.log(`[Token usage] ${label} → ${parts.join(', ')}`);
+}

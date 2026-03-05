@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { diagramAgent } from "@/lib/agents";
+import { diagramAgent } from "@/lib/agents/diagram-agent";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {

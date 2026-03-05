@@ -1,5 +1,6 @@
 import {getDiagramModel, HumanMessage, historyToMessages} from './models';
 import {applyTreeLayout} from '@/lib/tree-layout';
+import {logTokenUsage} from '@/lib/utils';
 
 // NODE TYPES:
 //- Round-rectangle = soft-goal
@@ -75,6 +76,7 @@ export class DiagramAgent {
 
         const response = await model.invoke({messages: [new HumanMessage(fullPrompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
+        logTokenUsage('diagram/startSession', lastMessage);
         const rawResponse = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : JSON.stringify(lastMessage.content);
@@ -123,6 +125,7 @@ export class DiagramAgent {
 
         const response = await model.invoke({messages});
         const lastMessage = response.messages[response.messages.length - 1];
+        logTokenUsage('diagram/expandTask', lastMessage);
         const rawResponse = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : JSON.stringify(lastMessage.content);

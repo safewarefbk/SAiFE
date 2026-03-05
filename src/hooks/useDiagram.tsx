@@ -20,7 +20,7 @@ import {
     useState,
 } from "react";
 import useUndoRedo from "./useUndoRedo";
-import {useAppStore} from "@/components/store";
+import {useAppStore} from "@/store/store";
 import {MarkerDefinition} from "@/components/edges/MarkerDefinition";
 import {debounce} from "lodash";
 

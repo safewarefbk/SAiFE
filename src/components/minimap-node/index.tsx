@@ -1,6 +1,6 @@
 import {type MiniMapNodeProps, useStore} from "@xyflow/react";
 import {ShapeComponents, ShapeType} from "../shape/types";
-import {getNodeColor} from "../utils/utils";
+import {getNodeColor} from "@/lib/utils";
 
 // the custom minimap node is being used to render the shapes of the nodes in the minimap, too
 function MiniMapNode({id, width, height, x, y, selected}: MiniMapNodeProps) {

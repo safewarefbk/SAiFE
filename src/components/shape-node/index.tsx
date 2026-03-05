@@ -19,7 +19,7 @@ import useUndoRedo from "@/hooks/useUndoRedo";
 import {fas} from "@fortawesome/free-solid-svg-icons";
 import {library} from "@fortawesome/fontawesome-svg-core";
 import {Code, GitBranch, ChevronDown, ChevronUp} from "react-feather";
-import {getNodeColorConfig} from "../utils/utils";
+import {getNodeColorConfig} from "@/lib/utils";
 
 library.add(fas);
 

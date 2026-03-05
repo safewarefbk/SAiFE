@@ -28,16 +28,16 @@ import {
     findRootNodes,
     findDirectCodeChildren,
     findAllDescendants
-} from "./utils/utils";
-import { integrateSubgraph, convertTaskToGoal } from "./utils/subgraph-integration";
-import * as SessionManager from "./utils/session-management";
-import * as LLMOperations from "./utils/llm-operations";
+} from "@/lib/utils";
+import { integrateSubgraph, convertTaskToGoal } from "@/lib/subgraph-integration";
+import * as SessionManager from "@/services/session-management";
+import * as LLMOperations from "@/services/llm-operations";
 
 
 import {useCallback, useEffect, useRef, useState} from "react";
 import {EditableEdge} from "./edges/EditableEdge";
 import {ConnectionLine} from "./edges/ConnectionLine";
-import savedDiagramJson from "../json-diagrams/DiagramX.json";
+import savedDiagramJson from "../../public/examples/DiagramX.json";
 import {useTheme} from "@/hooks/useTheme";
 import {Menu} from "./Menu";
 import CodeModal from "@components/CodeModal/CodeModal";

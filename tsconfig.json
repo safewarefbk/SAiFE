@@ -28,12 +28,6 @@
       ],
       "@components/*": [
         "./src/components/*"
-      ],
-      "@hooks/*": [
-        "./src/hooks/*"
-      ],
-      "@constants/*": [
-        "./src/constants/*"
       ]
     },
     "target": "ES2017"

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { codeAgent } from "@/lib/agents";
+import { codeAgent } from "@/lib/agents/code-agent";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {

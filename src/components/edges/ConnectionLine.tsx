@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {MarkerType, type ConnectionLineComponentProps} from "@xyflow/react";
 
-import {useAppStore} from "../store";
+import {useAppStore} from "@/store/store";
 import {getLinearPath} from "./EditableEdge";
 
 // The distance between points when free drawing
