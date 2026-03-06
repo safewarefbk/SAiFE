@@ -321,7 +321,7 @@ const Flow = () => {
      * Save code to database when it's generated/updated.
      * Returns the codeId so the caller can update node state via the codeCache useEffect.
      */
-    const saveCodeToDatabase = useCallback(async (nodeId: string, code: string, prompt?: string): Promise<string | null> => {
+    const saveCodeToDatabase = useCallback(async (nodeId: string, code: string, prompt?: string, totalTokens?: number | null): Promise<string | null> => {
         if (!sessionIdentifier || !code) return null;
 
         try {
@@ -331,7 +331,8 @@ const Flow = () => {
                 code,
                 prompt || '',
                 codeLanguage,
-                validationCache.get(nodeId) || false
+                validationCache.get(nodeId) || false,
+                totalTokens ?? null
             );
 
             console.log('Code saved to database:', nodeId, 'codeId:', codeId);
@@ -497,7 +498,7 @@ const Flow = () => {
         setCodeModalOpen(true);
 
         try {
-            const {code, prompt} = await LLMOperations.generateCode(
+            const {code, prompt, totalTokens} = await LLMOperations.generateCode(
                 dbSessionId!,
                 nodeId,
                 taskName,
@@ -513,7 +514,7 @@ const Flow = () => {
             setPromptCache(prev => new Map(prev).set(nodeId, prompt));
 
             // Save to database — only on success, never on error
-            const codeId = await saveCodeToDatabase(nodeId, code, prompt);
+            const codeId = await saveCodeToDatabase(nodeId, code, prompt, totalTokens);
             if (codeId) {
                 setCodeIdCache(prev => new Map(prev).set(nodeId, codeId));
             }
@@ -538,8 +539,8 @@ const Flow = () => {
             setCodeLoading(true);
             setError("");
 
-            // Server loads originalPrompt from DB via nodeId — no reconstruction needed here
-            const {code} = await LLMOperations.regenerateCode(
+            // Server loads originalPrompt from DB via nodeId, saves updated code+prompt, sets isValidated=false
+            const {code, updatedPrompt} = await LLMOperations.regenerateCode(
                 dbSessionId!,
                 currentCodeCacheKey,   // nodeId — server uses this to fetch originalPrompt from DB
                 generatedCode,
@@ -552,24 +553,16 @@ const Flow = () => {
             setGeneratedCode(code);
             setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, code));
 
-            // Invalidate validation — regenerated code needs re-validation
+            // Update the local prompt cache with the accumulated prompt
+            setPromptCache(prev => new Map(prev).set(currentCodeCacheKey, updatedPrompt));
+
+            // Invalidate validation in UI — server already persisted isValidated=false
             setValidationCache(prev => new Map(prev).set(currentCodeCacheKey, false));
             setNodes(nodes => nodes.map(n =>
                 n.id === currentCodeCacheKey
                     ? { ...n, data: { ...n.data, isValidated: false } }
                     : n
             ));
-            if (sessionIdentifier) {
-                SessionManager.invalidateCodeInDatabase(sessionIdentifier, currentCodeCacheKey)
-                    .catch(e => console.error('Failed to invalidate code after regeneration:', e));
-            }
-
-            // Save only the new code to DB, preserving the original prompt.
-            const originalPrompt = promptCache.get(currentCodeCacheKey) || currentOriginalPrompt;
-            const codeId = await saveCodeToDatabase(currentCodeCacheKey, code, originalPrompt);
-            if (codeId) {
-                setCodeIdCache(prev => new Map(prev).set(currentCodeCacheKey, codeId));
-            }
 
             // Close and reopen modal to show updated code
             setCodeModalOpen(false);
@@ -645,7 +638,7 @@ const Flow = () => {
             const goalLabel = String(targetNode?.data?.contents || "Goal");
             const typeLabel = isRoot ? "root-goal" : "sub-goal";
 
-            const {code, prompt} = await LLMOperations.aggregateCode(typeLabel, goalLabel, childrenCode, originalDescription);
+            const {code, prompt, totalTokens} = await LLMOperations.aggregateCode(typeLabel, goalLabel, childrenCode, originalDescription);
 
             // Snapshot BEFORE mutating caches so Ctrl+Z can revert aggregation
             takeSnapshot();
@@ -656,7 +649,7 @@ const Flow = () => {
             setCurrentOriginalPrompt(prompt);
 
             // Save to database — only on success
-            const codeId = await saveCodeToDatabase(cacheKey, code, prompt);
+            const codeId = await saveCodeToDatabase(cacheKey, code, prompt, totalTokens);
             if (codeId) {
                 setCodeIdCache(prev => new Map(prev).set(cacheKey, codeId));
             }

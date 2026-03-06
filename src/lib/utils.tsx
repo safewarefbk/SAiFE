@@ -152,11 +152,11 @@ export function detectProgrammingLanguage(text: string): string {
 
 /**
  * Logs token usage from an AIMessage's usage_metadata to the console.
- * Fields printed when available: input, output, cache_read, thinking, total.
+ * Returns the total token count (or null if unavailable) so callers can persist it.
  */
-export function logTokenUsage(label: string, message: any): void {
+export function logTokenUsage(label: string, message: any): number | null {
     const usage = message?.usage_metadata;
-    if (!usage) return;
+    if (!usage) return null;
     const parts: string[] = [];
     if (usage.input_tokens !== undefined)  parts.push(`input=${usage.input_tokens}`);
     if (usage.output_tokens !== undefined) parts.push(`output=${usage.output_tokens}`);
@@ -166,4 +166,5 @@ export function logTokenUsage(label: string, message: any): void {
         parts.push(`thinking=${usage.output_token_details.reasoning}`);
     if (usage.total_tokens !== undefined)  parts.push(`total=${usage.total_tokens}`);
     console.log(`[Token usage] ${label} → ${parts.join(', ')}`);
+    return usage.total_tokens ?? null;
 }

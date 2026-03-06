@@ -27,15 +27,20 @@ model Session {
   @@map("sessions")
 }
 
-// DiagramHistory table - stores LLM conversation history
+// DiagramHistory table - stores LLM conversation history as request-response pairs
+// Each row represents one full turn: the user prompt and the model response together.
 model DiagramHistory {
-  id          Int      @id @default(autoincrement())
-  sessionId   String
-  role        String   // "user" or "model"
-  content     String   // The actual message content
-  createdAt   DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  sessionId     String
+  userMessage   String   // The user prompt sent to the LLM
+  modelMessage  String   // The model response (diagram JSON)
 
-  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // Token usage metrics (nullable — older rows may not have them)
+  totalTokens   Int?
+
+  createdAt     DateTime @default(now())
+
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@map("diagram_history")
@@ -50,6 +55,10 @@ model Code {
   prompt          String?
   language        String
   isValidated     Boolean  @default(false)
+
+  // Token usage metrics (nullable — older rows or manual edits may not have them)
+  totalTokens     Int?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

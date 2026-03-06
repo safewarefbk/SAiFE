@@ -16,6 +16,7 @@ export class CodeAgent {
     async generate(taskName: string, language: string, projectDescription: string): Promise<{
         code: string;
         prompt: string;
+        totalTokens: number | null;
     }> {
         const model = await getCodeModel();
 
@@ -24,12 +25,12 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
-        logTokenUsage('code/generate', lastMessage);
+        const totalTokens = logTokenUsage('code/generate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
 
-        return {code, prompt};
+        return {code, prompt, totalTokens};
     }
 
     /**
@@ -42,7 +43,7 @@ export class CodeAgent {
         originalPrompt: string,
         currentCode: string,
         additionalPrompt: string
-    ): Promise<{ code: string }> {
+    ): Promise<{ code: string; totalTokens: number | null }> {
         const model = await getCodeModel();
 
         const prompt = `Original prompt: ${originalPrompt}` +
@@ -52,12 +53,12 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
-        logTokenUsage('code/regenerate', lastMessage);
+        const totalTokens = logTokenUsage('code/regenerate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
 
-        return {code};
+        return {code, totalTokens};
     }
 
     /**
@@ -72,7 +73,7 @@ export class CodeAgent {
         goal: string,
         childrenCode: Array<{ type: string; taskName: string; code: string }>,
         projectDescription: string
-    ): Promise<{ code: string; prompt: string }> {
+    ): Promise<{ code: string; prompt: string; totalTokens: number | null }> {
         const model = await getCodeModel();
 
         const codeSnippets = childrenCode.map((child, index) =>
@@ -96,12 +97,12 @@ export class CodeAgent {
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
-        logTokenUsage('code/aggregate', lastMessage);
+        const totalTokens = logTokenUsage('code/aggregate', lastMessage);
         const code = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
 
-        return {code, prompt};
+        return {code, prompt, totalTokens};
     }
 }
 

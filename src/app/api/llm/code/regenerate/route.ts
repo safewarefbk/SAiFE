@@ -19,9 +19,31 @@ export async function POST(req: Request) {
         const originalPrompt = codeRecord.prompt || "";
 
         // Pure LLM call — agent receives the real original prompt from DB
-        const { code } = await codeAgent.regenerate(originalPrompt, currentCode, newInstructions);
+        const { code, totalTokens } = await codeAgent.regenerate(originalPrompt, currentCode, newInstructions);
 
-        return NextResponse.json({ code });
+        // Persist: append new instructions to the existing prompt so future
+        // regenerations always build on the full accumulated context.
+        const updatedPrompt = newInstructions
+            ? `${originalPrompt}\nAdditional instructions: ${newInstructions}.`
+            : originalPrompt;
+
+        // Accumulate token count: add new tokens on top of previously stored total
+        const previousTokens = codeRecord.totalTokens ?? 0;
+        const accumulatedTokens = totalTokens !== null
+            ? previousTokens + totalTokens
+            : (previousTokens > 0 ? previousTokens : null);
+
+        await db.saveCode({
+            sessionId: codeRecord.sessionId,
+            nodeId: codeRecord.nodeId,
+            code,
+            prompt: updatedPrompt,
+            language: codeRecord.language ?? undefined,
+            isValidated: false,
+            totalTokens: accumulatedTokens,
+        });
+
+        return NextResponse.json({ code, updatedPrompt });
 
     } catch (error: any) {
         console.error("Error regenerating code:", error);

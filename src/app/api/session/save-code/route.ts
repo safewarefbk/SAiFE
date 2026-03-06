@@ -6,7 +6,7 @@ import { db } from "@/lib/db-service";
  */
 export async function POST(req: Request) {
     try {
-        const { sessionIdentifier, nodeId, code, prompt, language, isValidated } = await req.json();
+        const { sessionIdentifier, nodeId, code, prompt, language, isValidated, totalTokens } = await req.json();
 
         if (!sessionIdentifier || !nodeId || !code) {
             return NextResponse.json(
@@ -29,7 +29,8 @@ export async function POST(req: Request) {
             code,
             prompt,
             language: language || 'Python',
-            isValidated: isValidated || false
+            isValidated: isValidated || false,
+            totalTokens: totalTokens ?? null
         });
 
         // Update the node's codeId foreign key to link to the code.

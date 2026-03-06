@@ -19,9 +19,9 @@ export async function POST(req: Request) {
         const projectDescription = session.projectDescription || "";
 
         // Pure LLM call — agent receives project context as parameter
-        const { code, prompt } = await codeAgent.generate(taskName, language, projectDescription);
+        const { code, prompt, totalTokens } = await codeAgent.generate(taskName, language, projectDescription);
 
-        return NextResponse.json({ code, prompt });
+        return NextResponse.json({ code, prompt, totalTokens });
 
     } catch (error: any) {
         console.error("Error generating code:", error);

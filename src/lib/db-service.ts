@@ -47,6 +47,14 @@ export interface CodeData {
     prompt?: string | null;
     language: string;
     isValidated?: boolean;
+    totalTokens?: number | null;
+}
+
+export interface DiagramHistoryData {
+    sessionId: string;
+    userMessage: string;
+    modelMessage: string;
+    totalTokens?: number | null;
 }
 
 export class DatabaseService {
@@ -285,7 +293,8 @@ export class DatabaseService {
                 code: codeData.code,
                 prompt: codeData.prompt,
                 language: codeData.language,
-                isValidated: codeData.isValidated ?? false
+                isValidated: codeData.isValidated ?? false,
+                ...(codeData.totalTokens !== undefined && { totalTokens: codeData.totalTokens }),
             },
             create: {
                 sessionId: codeData.sessionId,
@@ -293,7 +302,8 @@ export class DatabaseService {
                 code: codeData.code,
                 prompt: codeData.prompt,
                 language: codeData.language,
-                isValidated: codeData.isValidated ?? false
+                isValidated: codeData.isValidated ?? false,
+                totalTokens: codeData.totalTokens ?? null,
             }
         });
     }
@@ -362,35 +372,35 @@ export class DatabaseService {
     // =====================
 
     /**
-     * Save LLM conversation history entry
+     * Save one LLM conversation turn (request + response pair) with token usage.
      */
-    async appendDiagramHistory(
-        sessionId: string,
-        role: 'user' | 'model',
-        content: string
-    ): Promise<void> {
+    async appendDiagramHistoryEntry(entry: DiagramHistoryData): Promise<void> {
         await prisma.diagramHistory.create({
             data: {
-                sessionId,
-                role,
-                content
+                sessionId: entry.sessionId,
+                userMessage: entry.userMessage,
+                modelMessage: entry.modelMessage,
+                totalTokens: entry.totalTokens ?? null,
             }
         });
     }
 
     /**
-     * Get complete diagram history for a session
+     * Get complete diagram history for a session, returned in the format
+     * the diagram agent expects (role/parts pairs for each turn).
      */
     async getDiagramHistory(sessionId: string): Promise<Array<{ role: string; content: string }>> {
         const history = await prisma.diagramHistory.findMany({
             where: { sessionId },
             orderBy: { createdAt: 'asc' },
-            select: {
-                role: true,
-                content: true
-            }
+            select: { userMessage: true, modelMessage: true }
         });
-        return history;
+
+        // Expand each pair back into the flat role/content format the agent consumes
+        return history.flatMap(row => [
+            { role: 'user',  content: row.userMessage  },
+            { role: 'model', content: row.modelMessage },
+        ]);
     }
 
     // =====================

@@ -68,6 +68,7 @@ export class DiagramAgent {
         diagram: string;
         userMessage: string;
         modelMessage: string;
+        totalTokens: number | null;
     }> {
         const model = await getDiagramModel();
 
@@ -76,7 +77,7 @@ export class DiagramAgent {
 
         const response = await model.invoke({messages: [new HumanMessage(fullPrompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
-        logTokenUsage('diagram/startSession', lastMessage);
+        const totalTokens = logTokenUsage('diagram/startSession', lastMessage);
         const rawResponse = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : JSON.stringify(lastMessage.content);
@@ -88,6 +89,7 @@ export class DiagramAgent {
             diagram: responseText,
             userMessage: fullPrompt,
             modelMessage: responseText,
+            totalTokens,
         };
     }
 
@@ -105,6 +107,7 @@ export class DiagramAgent {
         diagram: string;
         userMessage: string;
         modelMessage: string;
+        totalTokens: number | null;
     }> {
         if (history.length === 0) {
             throw new Error("No conversation history provided. Session may not have been initialized properly.");
@@ -125,7 +128,7 @@ export class DiagramAgent {
 
         const response = await model.invoke({messages});
         const lastMessage = response.messages[response.messages.length - 1];
-        logTokenUsage('diagram/expandTask', lastMessage);
+        const totalTokens = logTokenUsage('diagram/expandTask', lastMessage);
         const rawResponse = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : JSON.stringify(lastMessage.content);
@@ -137,6 +140,7 @@ export class DiagramAgent {
             diagram: responseText,
             userMessage: taskPrompt,
             modelMessage: responseText,
+            totalTokens,
         };
     }
 }

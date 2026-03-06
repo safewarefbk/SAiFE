@@ -48,7 +48,7 @@ const CODE_MODEL_SYSTEM_PROMPT = `You are a Senior Secure Software Architect who
  */
 export function getGeminiProModel(): ChatGoogleGenerativeAI {
     if (!geminiProModel) {
-        const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+        const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
         geminiProModel = new ChatGoogleGenerativeAI({
@@ -73,7 +73,7 @@ export async function getDiagramModel() {
  */
 export function getGeminiFlashModel(): ChatGoogleGenerativeAI {
     if (!geminiFlashModel) {
-        const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+        const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
         geminiFlashModel = new ChatGoogleGenerativeAI({

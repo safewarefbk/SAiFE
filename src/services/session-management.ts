@@ -104,7 +104,8 @@ export const saveCodeToDatabase = async (
     code: string,
     prompt: string,
     language: string,
-    isValidated: boolean
+    isValidated: boolean,
+    totalTokens?: number | null
 ): Promise<string> => {
     const response = await fetch('/api/session/save-code', {
         method: 'POST',
@@ -115,7 +116,8 @@ export const saveCodeToDatabase = async (
             code,
             prompt,
             language,
-            isValidated
+            isValidated,
+            totalTokens: totalTokens ?? null
         })
     });
 

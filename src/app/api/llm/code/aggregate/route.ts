@@ -5,14 +5,14 @@ export async function POST(req: Request) {
     try {
         const { type, goal, childrenCode, projectDescription } = await req.json();
 
-        const { code, prompt } = await codeAgent.aggregate(
+        const { code, prompt, totalTokens } = await codeAgent.aggregate(
             type,
             goal,
             childrenCode,
             projectDescription
         );
 
-        return NextResponse.json({ code, prompt });
+        return NextResponse.json({ code, prompt, totalTokens });
 
 
     } catch (error: any) {
