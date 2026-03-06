@@ -12,9 +12,11 @@ const datasourceUrl = isPostgres
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
+  // NOTE: migrations are disabled during development — using `prisma db push` instead.
+  // Re-enable this block when moving to production with PostgreSQL:
+  // migrations: {
+  //   path: "prisma/migrations",
+  // },
   datasource: {
     url: datasourceUrl,
   },

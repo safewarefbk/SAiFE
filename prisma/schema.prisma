@@ -15,6 +15,7 @@ model Session {
   sessionIdentifier   String   @unique
   projectDescription  String?
   language            String?
+  hidden              Boolean  @default(false)
   createdAt           DateTime @default(now())
   lastAccess          DateTime @updatedAt
 

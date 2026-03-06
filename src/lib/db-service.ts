@@ -428,6 +428,9 @@ export class DatabaseService {
      */
     async getAllSessionIdentifiers(): Promise<string[]> {
         const sessions = await prisma.session.findMany({
+            where: {
+                hidden: false
+            },
             select: {
                 sessionIdentifier: true
             },

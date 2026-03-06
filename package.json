@@ -7,15 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "kill": "kill -9 $(lsof -ti:3000)"
+    "kill": "kill -9 $(lsof -ti:3000)",
+    "db:push": "prisma db push",
+    "db:clean": "bash prisma/scripts/clean-database.sh",
+    "db:list-sessions": "tsx prisma/scripts/list-sessions.ts",
+    "db:copy-session": "tsx prisma/scripts/copy-session.ts",
+    "db:delete-session": "tsx prisma/scripts/delete-session.ts",
+    "db:toggle-visibility": "tsx prisma/scripts/toggle-session-visibility.ts"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.5.2",
     "@fortawesome/react-fontawesome": "^3.1.1",
+    "@langchain/core": "^1.1.26",
     "@langchain/google-genai": "^2.1.19",
     "@langchain/mistralai": "^1.0.4",
-    "@langchain/core": "^1.1.26",
-    "langchain": "1.2.25",
     "@libsql/client": "^0.17.0",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-libsql": "^7.4.0",
@@ -24,7 +29,8 @@
     "@xyflow/react": "^12.3.2",
     "clsx": "^2.1.1",
     "gsap": "^3.12.5",
-    "lodash": "^4.17.21",
+    "langchain": "1.2.25",
+    "lodash": "^4.17.23",
     "next": "16.1.6",
     "react": "19.2.1",
     "react-dom": "19.2.1",
@@ -33,6 +39,15 @@
     "react-resizable-panels": "^2.1.7",
     "react-textarea-autosize": "^8.5.6",
     "tailwind-merge": "^2.3.0"
+  },
+  "overrides": {
+    "hono": "^4.12.5",
+    "@hono/node-server": "^1.19.11",
+    "dompurify": "^3.3.2",
+    "chevrotain": "^11.2.0",
+    "@chevrotain/gast": "^11.2.0",
+    "@chevrotain/cst-dts-gen": "^11.2.0",
+    "@mrleebo/prisma-ast": "^0.14.0"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16",
@@ -47,6 +62,7 @@
     "postcss": "^8",
     "prisma": "^7.4.0",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
