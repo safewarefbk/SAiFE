@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { codeAgent } from "@/lib/agents/code-agent";
+import { getCodeModel } from "@/lib/agents/models";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {
@@ -10,16 +11,24 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "sessionId and nodeId are required" }, { status: 400 });
         }
 
-        // Server-side DB: load the original prompt that was used when the code was first generated
-        const codeRecord = await db.getCodeByNodeId(sessionId, nodeId);
+        const [codeRecord, session] = await Promise.all([
+            db.getCodeByNodeId(sessionId, nodeId),
+            db.getSessionById(sessionId),
+        ]);
+
         if (!codeRecord) {
             return NextResponse.json({ error: "No existing code record found for this node" }, { status: 404 });
         }
 
+        // Build model with project context in system prompt
+        const model = await getCodeModel(
+            session?.projectDescription || undefined,
+            session?.technicalRequirements || undefined,
+        );
+
         const originalPrompt = codeRecord.prompt || "";
 
-        // Pure LLM call — agent receives the real original prompt from DB
-        const { code, totalTokens } = await codeAgent.regenerate(originalPrompt, currentCode, newInstructions);
+        const { code, totalTokens } = await codeAgent.regenerate(model, originalPrompt, currentCode, newInstructions);
 
         // Persist: append new instructions to the existing prompt so future
         // regenerations always build on the full accumulated context.
@@ -27,7 +36,7 @@ export async function POST(req: Request) {
             ? `${originalPrompt}\nAdditional instructions: ${newInstructions}.`
             : originalPrompt;
 
-        // Accumulate token count: add new tokens on top of previously stored total
+        // Accumulate token count
         const previousTokens = codeRecord.totalTokens ?? 0;
         const accumulatedTokens = totalTokens !== null
             ? previousTokens + totalTokens
@@ -38,7 +47,6 @@ export async function POST(req: Request) {
             nodeId: codeRecord.nodeId,
             code,
             prompt: updatedPrompt,
-            language: codeRecord.language ?? undefined,
             isValidated: false,
             totalTokens: accumulatedTokens,
         });

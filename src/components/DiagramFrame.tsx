@@ -60,12 +60,12 @@ const Flow = () => {
     const [sessionIdentifier, setSessionIdentifier] = useState<string | null>(null);  // Database session identifier (user-friendly name)
     const [dbSessionId, setDbSessionId] = useState<string | null>(null);  // Database session ID (actual ID for DB queries)
     const [sessionModalOpen, setSessionModalOpen] = useState(true);  // Show session modal on startup
-    const [codeLanguage, setCodeLanguage] = useState<string>("Python");
     const diagram = useDiagram();
     const {setNodes, setEdges, getNodes, getEdges} = diagram.useReactFlow();
     const {takeSnapshot, setExtraStateCallbacks} = useUndoRedo();
     const [isModalOpen, setIsModalOpen] = useState(false);  // Changed to false, will open after session selection
     const [originalDescription, setOriginalDescription] = useState<string>("");
+    const [technicalRequirements, setTechnicalRequirements] = useState<string>("");
     const themeHook = useTheme();
     const [codeModalOpen, setCodeModalOpen] = useState(false);
     const [generatedCode, setGeneratedCode] = useState<string>("");
@@ -218,8 +218,8 @@ const Flow = () => {
                 // Set the database session ID for LLM operations
                 setDbSessionId(session.id);
 
-                setCodeLanguage(session.language || 'Python');
                 setOriginalDescription(session.projectDescription || '');
+                setTechnicalRequirements(session.technicalRequirements || '');
 
                 // Reconstruct the single graph
                 if (graphs.length > 0) {
@@ -330,7 +330,6 @@ const Flow = () => {
                 nodeId,
                 code,
                 prompt || '',
-                codeLanguage,
                 validationCache.get(nodeId) || false,
                 totalTokens ?? null
             );
@@ -341,23 +340,23 @@ const Flow = () => {
             console.error('Failed to save code to database:', e);
             return null;
         }
-    }, [sessionIdentifier, codeLanguage, validationCache]);
+    }, [sessionIdentifier, validationCache]);
 
 
     // Function to generate the first graph of the project
-    const handleModalSubmit = async (description: string, includeNonFunctional: boolean) => {
+    const handleModalSubmit = async (description: string, techReqs: string, includeNonFunctional: boolean) => {
         setThinking(true);
         setError("");
         setIsModalOpen(false);
         setOriginalDescription(description);
-        const detectedLanguage = detectProgrammingLanguage(description);
-        setCodeLanguage(detectedLanguage);
+        setTechnicalRequirements(techReqs);
 
         try {
             if (!dbSessionId) {
                 throw new Error("No active session. Please create a session first.");
             }
 
+            // Diagram LLM receives only the formal description (no technical noise)
             const {responseText} = await LLMOperations.generateDiagram(description, includeNonFunctional, dbSessionId);
 
             let parsedJson;
@@ -368,22 +367,13 @@ const Flow = () => {
             }
 
             if (parsedJson) {
-                // Snapshot before uploading so Ctrl+Z can revert to blank state
                 takeSnapshot();
-
                 diagram.uploadJson(responseText);
-                console.log(diagram);
-                console.log(responseText);
 
-                // Save project description and language to database session
                 if (sessionIdentifier) {
                     try {
-                        await SessionManager.updateSessionMetadata(sessionIdentifier, description, detectedLanguage);
-
-                        // Auto-save the initial diagram
-                        setTimeout(() => {
-                            saveGraphToDatabase();
-                        }, 500);
+                        await SessionManager.updateSessionMetadata(sessionIdentifier, description, techReqs);
+                        setTimeout(() => { saveGraphToDatabase(); }, 500);
                     } catch (e) {
                         console.error('Failed to save project description to session:', e);
                     }
@@ -502,7 +492,6 @@ const Flow = () => {
                 dbSessionId!,
                 nodeId,
                 taskName,
-                codeLanguage
             );
 
             // Snapshot BEFORE mutating caches so Ctrl+Z can revert code generation
@@ -638,7 +627,7 @@ const Flow = () => {
             const goalLabel = String(targetNode?.data?.contents || "Goal");
             const typeLabel = isRoot ? "root-goal" : "sub-goal";
 
-            const {code, prompt, totalTokens} = await LLMOperations.aggregateCode(typeLabel, goalLabel, childrenCode, originalDescription);
+            const {code, prompt, totalTokens} = await LLMOperations.aggregateCode(typeLabel, goalLabel, childrenCode, dbSessionId!);
 
             // Snapshot BEFORE mutating caches so Ctrl+Z can revert aggregation
             takeSnapshot();
@@ -1011,7 +1000,7 @@ const Flow = () => {
                 isOpen={codeModalOpen}
                 onClose={() => setCodeModalOpen(false)}
                 code={generatedCode}
-                codeLanguage={codeLanguage}
+                codeLanguage={detectProgrammingLanguage(technicalRequirements)}
                 isLoading={codeLoading}
                 isValidated={validationCache.get(currentCodeCacheKey) === true}
                 onValidate={handleValidateCode}

@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
 import { codeAgent } from "@/lib/agents/code-agent";
+import { getCodeModel } from "@/lib/agents/models";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {
     try {
-        const { sessionId, taskName, language } = await req.json();
+        const { sessionId, taskName } = await req.json();
 
         if (!sessionId) {
             return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
         }
 
-        // Server-side DB: load project description to provide context to the agent
         const session = await db.getSessionById(sessionId);
         if (!session) {
             return NextResponse.json({ error: "Session not found" }, { status: 404 });
         }
 
-        const projectDescription = session.projectDescription || "";
+        // Build model once with full context in system prompt
+        const model = await getCodeModel(
+            session.projectDescription || undefined,
+            session.technicalRequirements || undefined,
+        );
 
-        // Pure LLM call — agent receives project context as parameter
-        const { code, prompt, totalTokens } = await codeAgent.generate(taskName, language, projectDescription);
+        const { code, prompt, totalTokens } = await codeAgent.generate(model, taskName);
 
         return NextResponse.json({ code, prompt, totalTokens });
 

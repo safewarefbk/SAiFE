@@ -11,13 +11,13 @@ datasource db {
 
 // Session table - stores session identifiers
 model Session {
-  id                  String   @id @default(cuid())
-  sessionIdentifier   String   @unique
-  projectDescription  String?
-  language            String?
-  hidden              Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  lastAccess          DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  sessionIdentifier     String   @unique
+  projectDescription    String?  // Formal requirements — fed to the Diagram Generator LLM
+  technicalRequirements String?  // Technical requirements — fed to the Code Generator LLM (includes language)
+  hidden                Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  lastAccess            DateTime @updatedAt
 
   nodes               Node[]
   edges               Edge[]
@@ -53,7 +53,7 @@ model Code {
   nodeId          String   // The node this code belongs to
   code            String 
   prompt          String?
-  language        String
+  language        String?  // Deprecated: language is now in technicalRequirements on Session
   isValidated     Boolean  @default(false)
 
   // Token usage metrics (nullable — older rows or manual edits may not have them)

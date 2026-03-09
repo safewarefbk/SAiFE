@@ -42,21 +42,19 @@ export const generateTaskDiagram = async (dbSessionId: string, taskName: string,
 
 /**
  * Generate code for a leaf task.
- * @param sessionId - The DB session ID (used server-side to load project description).
+ * @param sessionId - The DB session ID (used server-side to load project context).
  * @param nodeId - The node ID (used server-side to link code to a node).
  * @param taskName - The task name.
- * @param language - The programming language.
  */
 export const generateCode = async (
     sessionId: string,
     nodeId: string,
     taskName: string,
-    language: string,
 ) => {
     const response = await fetch('/api/llm/code/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, nodeId, taskName, language }),
+        body: JSON.stringify({ sessionId, nodeId, taskName }),
     });
 
     if (!response.ok) {
@@ -101,7 +99,7 @@ export const aggregateCode = async (
     type: string,
     goal: string,
     childrenCode: Array<{ taskName: string; code: string; type: string }>,
-    projectDescription: string
+    sessionId: string
 ) => {
     const response = await fetch('/api/llm/code/aggregate', {
         method: 'POST',
@@ -110,7 +108,7 @@ export const aggregateCode = async (
             type,
             goal,
             childrenCode,
-            projectDescription
+            sessionId
         }),
     });
 

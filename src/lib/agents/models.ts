@@ -19,13 +19,14 @@ NODE TYPES:
 - Hexagon = task (concrete action / leaf-level work item)
 
 STRUCTURAL RULES:
-- Exactly one root circle (the top-level goal); every other node must have a parent.
-- Hierarchy flows: tasks → AND → goals.
-- A goal with 2+ children must use an AND capsule as an intermediary.
-- A Goal needs 2+ tasks otherwise it must be a task.
-- No duplicate edges.
-- Include cybersecurity-related requirements as part of the goal tree.
-- Node labels must be short and descriptive.
+- Exactly ONE root circle (the strategic, top-level goal).
+- Every other node must be reachable from the root.
+- Decomposition hierarchy: tasks → AND → goals/sub-goals.
+- A goal with 2+ children MUST use an AND capsule as intermediary.
+- A goal with only 1 child MUST be a task instead (no single-child goals).
+- Tasks are always leaf nodes — they have no children.
+- No duplicate edges. No orphan nodes.
+- Node labels must be short, descriptive, and action-oriented for tasks.
 - Exclude all soft-goal nodes.
 
 OUTPUT FORMAT:
@@ -39,9 +40,26 @@ EXAMPLE:
 Output JSON only.`;
 
 
-const CODE_MODEL_SYSTEM_PROMPT = `You are a Senior Secure Software Architect who writes clean, efficient ` +
-    `code in any language with security as the primary directive, ensuring all output is Secure by Design and Secure ` +
-    `by Default. Output ONLY code.`
+const CODE_MODEL_SYSTEM_PROMPT_BASE = `You are a Senior Secure Software Architect who writes clean, efficient ` +
+    `code. Secure by Design and Secure by Default must apply to EVERY piece of code you produce. Output ONLY code.`;
+
+/**
+ * Build the code model system prompt, optionally injecting project context.
+ * - projectDescription: the formal description of the system (what it does)
+ * - technicalRequirements: language, frameworks, libraries, architecture constraints
+ * Both are appended to the static base so the model treats them as
+ * standing constraints for the entire session rather than per-request hints.
+ */
+function buildCodeSystemPrompt(projectDescription?: string, technicalRequirements?: string): string {
+    let prompt = CODE_MODEL_SYSTEM_PROMPT_BASE;
+    if (projectDescription) {
+        prompt += `\n\nProject context: ${projectDescription}`;
+    }
+    if (technicalRequirements) {
+        prompt += `\n\nTechnical constraints (apply to every response): ${technicalRequirements}`;
+    }
+    return prompt;
+}
 
 /**
  * Gemini Pro model for diagram generation - includes system prompt
@@ -84,12 +102,12 @@ export function getGeminiFlashModel(): ChatGoogleGenerativeAI {
     return geminiFlashModel;
 }
 
-export async function getCodeModel() {
+export async function getCodeModel(projectDescription?: string, technicalRequirements?: string) {
     const model = getGeminiFlashModel();
     return createAgent({
         model,
         tools: [],
-        systemPrompt: CODE_MODEL_SYSTEM_PROMPT
+        systemPrompt: buildCodeSystemPrompt(projectDescription, technicalRequirements)
     });
 }
 

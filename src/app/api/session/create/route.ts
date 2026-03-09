@@ -6,7 +6,7 @@ import { db } from "@/lib/db-service";
  */
 export async function POST(req: Request) {
     try {
-        const { sessionIdentifier, projectDescription, language } = await req.json();
+        const { sessionIdentifier } = await req.json();
 
         if (!sessionIdentifier) {
             return NextResponse.json(
@@ -24,11 +24,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const session = await db.createSession(
-            sessionIdentifier,
-            projectDescription,
-            language
-        );
+        const session = await db.createSession(sessionIdentifier);
 
         return NextResponse.json({ session });
 
@@ -46,7 +42,7 @@ export async function POST(req: Request) {
  */
 export async function PUT(req: Request) {
     try {
-        const { sessionIdentifier, projectDescription, language } = await req.json();
+        const { sessionIdentifier, projectDescription, technicalRequirements } = await req.json();
 
         if (!sessionIdentifier) {
             return NextResponse.json(
@@ -65,7 +61,7 @@ export async function PUT(req: Request) {
 
         await db.updateSession(session.id, {
             projectDescription,
-            language
+            technicalRequirements,
         });
 
         return NextResponse.json({ success: true });

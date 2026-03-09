@@ -73,7 +73,7 @@ export class DiagramAgent {
         const model = await getDiagramModel();
 
         const descriptionOrDefault = description || "Create requirements for a random software project.";
-        const fullPrompt = `Model the system described as: ${descriptionOrDefault}`;
+        const fullPrompt = `Generate a complete Goal Model for the following system: ${descriptionOrDefault}`;
 
         const response = await model.invoke({messages: [new HumanMessage(fullPrompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
@@ -115,9 +115,9 @@ export class DiagramAgent {
 
         const model = await getDiagramModel();
 
-        let taskPrompt = `Consider task "${taskName}" a goal and expand it.` +
-            `\nRules: leaf tasks must be more specific than parent, same format, exclude unrelated.` +
-            `\nJSON only with task name as root`;
+        let taskPrompt = `Expand task "${taskName}" into a sub-goal model.` +
+            `\n"${taskName}" becomes the root goal. Decompose it into specific leaf tasks.` +
+            `\nRules: leaf tasks must be more specific than the parent; exclude unrelated tasks; same output format.`;
 
         if (userInstructions) {
             taskPrompt += `\nAdditional instructions: ${userInstructions}`;

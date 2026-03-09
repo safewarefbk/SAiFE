@@ -9,7 +9,7 @@ export interface SessionData {
     id: string;
     sessionIdentifier: string;
     projectDescription?: string | null;
-    language?: string | null;
+    technicalRequirements?: string | null;
     createdAt: Date;
     lastAccess: Date;
 }
@@ -45,7 +45,6 @@ export interface CodeData {
     nodeId: string;
     code: string;
     prompt?: string | null;
-    language: string;
     isValidated?: boolean;
     totalTokens?: number | null;
 }
@@ -75,17 +74,9 @@ export class DatabaseService {
     /**
      * Create a new session
      */
-    async createSession(
-        sessionIdentifier: string,
-        projectDescription?: string,
-        language?: string
-    ): Promise<SessionData> {
+    async createSession(sessionIdentifier: string): Promise<SessionData> {
         const session = await prisma.session.create({
-            data: {
-                sessionIdentifier,
-                projectDescription,
-                language,
-            }
+            data: { sessionIdentifier }
         });
         return session;
     }
@@ -123,7 +114,7 @@ export class DatabaseService {
      */
     async updateSession(
         sessionId: string,
-        data: Partial<Pick<SessionData, 'projectDescription' | 'language'>>
+        data: Partial<Pick<SessionData, 'projectDescription' | 'technicalRequirements'>>
     ): Promise<SessionData> {
         return prisma.session.update({
             where: { id: sessionId },
@@ -292,7 +283,6 @@ export class DatabaseService {
             update: {
                 code: codeData.code,
                 prompt: codeData.prompt,
-                language: codeData.language,
                 isValidated: codeData.isValidated ?? false,
                 ...(codeData.totalTokens !== undefined && { totalTokens: codeData.totalTokens }),
             },
@@ -301,7 +291,6 @@ export class DatabaseService {
                 nodeId: codeData.nodeId,
                 code: codeData.code,
                 prompt: codeData.prompt,
-                language: codeData.language,
                 isValidated: codeData.isValidated ?? false,
                 totalTokens: codeData.totalTokens ?? null,
             }

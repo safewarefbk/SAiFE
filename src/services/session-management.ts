@@ -39,12 +39,12 @@ export const createSessionInDatabase = async (sessionIdentifier: string) => {
 };
 
 /**
- * Update session with project description and language
+ * Update session with project description and technical requirements
  */
 export const updateSessionMetadata = async (
     sessionIdentifier: string,
     projectDescription: string,
-    language: string
+    technicalRequirements: string,
 ) => {
     await fetch('/api/session/create', {
         method: 'PUT',
@@ -52,7 +52,7 @@ export const updateSessionMetadata = async (
         body: JSON.stringify({
             sessionIdentifier,
             projectDescription,
-            language
+            technicalRequirements,
         })
     });
 };
@@ -103,7 +103,6 @@ export const saveCodeToDatabase = async (
     nodeId: string,
     code: string,
     prompt: string,
-    language: string,
     isValidated: boolean,
     totalTokens?: number | null
 ): Promise<string> => {
@@ -115,7 +114,6 @@ export const saveCodeToDatabase = async (
             nodeId,
             code,
             prompt,
-            language,
             isValidated,
             totalTokens: totalTokens ?? null
         })

@@ -39,10 +39,10 @@ async function main() {
         // 1. Create new session
         const newSession = await tx.session.create({
             data: {
-                sessionIdentifier: destIdentifier,
-                projectDescription: source.projectDescription,
-                language: source.language,
-                hidden: false,
+                sessionIdentifier:    destIdentifier,
+                projectDescription:   source.projectDescription,
+                technicalRequirements: source.technicalRequirements,
+                hidden:               false,
             }
         })
 
@@ -55,7 +55,6 @@ async function main() {
                     nodeId:      c.nodeId,
                     code:        c.code,
                     prompt:      c.prompt,
-                    language:    c.language,
                     isValidated: c.isValidated,
                 }
             })
@@ -100,7 +99,12 @@ async function main() {
         // 5. Copy diagram history
         for (const h of source.diagramHistory) {
             await tx.diagramHistory.create({
-                data: { sessionId: newSession.id, role: h.role, content: h.content }
+                data: {
+                    sessionId:    newSession.id,
+                    userMessage:  h.userMessage,
+                    modelMessage: h.modelMessage,
+                    totalTokens:  h.totalTokens ?? null,
+                }
             })
         }
 
