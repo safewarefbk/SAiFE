@@ -1,0 +1,40 @@
+services:
+
+  saife:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: saife:latest
+    container_name: saife
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+
+    # ── Runtime secrets ─────────────────────────────────────────────────────
+    # Never bake secrets into the image.  Provide them here or via a .env file
+    # that docker-compose picks up automatically (see .env.example).
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      # SQLite path inside the container (matches the volume mount below)
+      DATABASE_URL: "file:/app/prisma/data/saife.db"
+      # API keys — override with real values or use an .env file
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+    # ── Persistent SQLite storage ────────────────────────────────────────────
+    # The database file is stored in a named volume so it survives container
+    # rebuilds and restarts.
+    volumes:
+      - saife-db:/app/prisma/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/session/list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  saife-db:
+    driver: local
+

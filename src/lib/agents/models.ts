@@ -70,7 +70,7 @@ export function getGeminiProModel(): ChatGoogleGenerativeAI {
         if (!apiKey) throw new Error("GEMINI API key not configured");
 
         geminiProModel = new ChatGoogleGenerativeAI({
-            model: "gemini-3.1-pro-preview",
+            model: "gemini-3-flash-preview",
             apiKey,
         });
     }

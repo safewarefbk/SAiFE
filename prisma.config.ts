@@ -4,10 +4,12 @@ import "dotenv/config";
 import path from "path";
 import { defineConfig } from "prisma/config";
 
-// For SQLite: resolve the database path relative to the project root
-const isPostgres = process.env["DATABASE_URL"]?.startsWith("postgresql");
-const datasourceUrl = isPostgres
-  ? process.env["DATABASE_URL"]!
+// Priority:
+//  1. DATABASE_URL env var (set explicitly in Docker / production)
+//  2. Local fallback: prisma/dev.db relative to this file
+const envUrl = process.env["DATABASE_URL"];
+const datasourceUrl = envUrl
+  ? envUrl  // covers both "file:/app/prisma/data/saife.db" and postgresql:// URLs
   : `file:${path.join(__dirname, "prisma", "dev.db")}`;
 
 export default defineConfig({
