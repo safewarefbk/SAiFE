@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         }));
 
         // Pure LLM call — agent receives history as parameter, performs no DB operations
-        const { diagram, userMessage, modelMessage, totalTokens } = await diagramAgent.expandTask(taskName, history, userPrompt);
+        const { diagram, userMessage, modelMessage, totalTokens } = await diagramAgent.expandTask(taskName, history, userPrompt, dbSessionId);
 
         // Server-side DB: persist new conversation turn as a single request-response pair
         await db.appendDiagramHistoryEntry({ sessionId: dbSessionId, userMessage, modelMessage, totalTokens });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { codeAgent } from "@/lib/agents/code-agent";
-import { getCodeModel } from "@/lib/agents/models";
+import { getCodeModel } from "@/lib/agents/agents";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {
@@ -20,8 +20,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "No existing code record found for this node" }, { status: 404 });
         }
 
-        // Build model with project context in system prompt
+        // Build model with project context in system prompt (reuses the pooled instance for this session)
         const model = await getCodeModel(
+            sessionId,
             session?.projectDescription || undefined,
             session?.technicalRequirements || undefined,
         );

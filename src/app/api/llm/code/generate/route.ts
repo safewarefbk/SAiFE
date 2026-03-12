@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { codeAgent } from "@/lib/agents/code-agent";
-import { getCodeModel } from "@/lib/agents/models";
+import { getCodeModel } from "@/lib/agents/agents";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {
@@ -16,8 +16,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Session not found" }, { status: 404 });
         }
 
-        // Build model once with full context in system prompt
+        // Build model once with full context in system prompt (reuses the pooled instance for this session)
         const model = await getCodeModel(
+            sessionId,
             session.projectDescription || undefined,
             session.technicalRequirements || undefined,
         );

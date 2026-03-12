@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { codeAgent } from "@/lib/agents/code-agent";
-import { getCodeModel } from "@/lib/agents/models";
+import { getCodeModel } from "@/lib/agents/agents";
 import { db } from "@/lib/db-service";
 
 export async function POST(req: Request) {
@@ -11,6 +11,7 @@ export async function POST(req: Request) {
         if (sessionId) {
             const session = await db.getSessionById(sessionId);
             model = await getCodeModel(
+                sessionId,
                 session?.projectDescription || undefined,
                 session?.technicalRequirements || undefined,
             );

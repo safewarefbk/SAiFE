@@ -18,8 +18,10 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       # SQLite path inside the container (matches the volume mount below)
       DATABASE_URL: "file:/app/prisma/data/saife.db"
-      # API keys — override with real values or use an .env file
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # API keys — set GEMINI_API_KEYS (comma-separated, recommended) for
+      # round-robin key rotation, or GEMINI_API_KEY for a single key.
+      GEMINI_API_KEYS: ${GEMINI_API_KEYS:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
 
     # ── Persistent SQLite storage ────────────────────────────────────────────
     # The database file is stored in a named volume so it survives container

@@ -13,7 +13,8 @@ export async function POST(req: Request) {
         // Pure LLM call — agent has no DB knowledge
         const { diagram, userMessage, modelMessage, totalTokens } = await diagramAgent.startSession(
             description,
-            includeNonFunctional
+            includeNonFunctional,
+            dbSessionId
         );
 
         // Server-side DB: persist conversation turn as a single request-response pair

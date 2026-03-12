@@ -1,4 +1,4 @@
-import {getDiagramModel, HumanMessage, historyToMessages} from './models';
+import {getDiagramModel, HumanMessage, historyToMessages} from './agents';
 import {applyTreeLayout} from '@/lib/tree-layout';
 import {logTokenUsage} from '@/lib/utils';
 
@@ -63,14 +63,15 @@ export class DiagramAgent {
      */
     async startSession(
         description: string,
-        includeNonFunctional: boolean
+        includeNonFunctional: boolean,
+        sessionId?: string
     ): Promise<{
         diagram: string;
         userMessage: string;
         modelMessage: string;
         totalTokens: number | null;
     }> {
-        const model = await getDiagramModel();
+        const model = await getDiagramModel(sessionId);
 
         const descriptionOrDefault = description || "Create requirements for a random software project.";
         const fullPrompt = `Generate a complete Goal Model for the following system: ${descriptionOrDefault}`;
@@ -102,7 +103,8 @@ export class DiagramAgent {
     async expandTask(
         taskName: string,
         history: Array<{ role: string; parts: Array<{ text: string }> }>,
-        userInstructions?: string
+        userInstructions?: string,
+        sessionId?: string
     ): Promise<{
         diagram: string;
         userMessage: string;
@@ -113,7 +115,7 @@ export class DiagramAgent {
             throw new Error("No conversation history provided. Session may not have been initialized properly.");
         }
 
-        const model = await getDiagramModel();
+        const model = await getDiagramModel(sessionId);
 
         let taskPrompt = `Expand task "${taskName}" into a sub-goal model.` +
             `\n"${taskName}" becomes the root goal. Decompose it into specific leaf tasks.` +

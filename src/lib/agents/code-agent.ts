@@ -1,4 +1,4 @@
-import {HumanMessage} from './models';
+import {HumanMessage} from './agents';
 import {logTokenUsage} from '@/lib/utils';
 
 /**
