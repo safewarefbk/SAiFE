@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // Session table - stores session identifiers
@@ -53,7 +53,6 @@ model Code {
   nodeId          String   // The node this code belongs to
   code            String 
   prompt          String?
-  language        String?  // Deprecated: language is now in technicalRequirements on Session
   isValidated     Boolean  @default(false)
 
   // Token usage metrics (nullable — older rows or manual edits may not have them)
@@ -85,9 +84,9 @@ model Node {
   contents    String?  // The text/label of the node
   collapsed   Boolean  @default(false)  // Collapse state for goals
 
-  // Dimensions
-  width       Int?
-  height      Int?
+  // Dimensions (Float so React Flow decimal measurements are preserved)
+  width       Float?
+  height      Float?
 
   // Visual state
   hidden      Boolean  @default(false)  // For collapse/expand functionality

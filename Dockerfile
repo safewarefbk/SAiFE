@@ -6,8 +6,8 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Native build tools needed by some npm packages (e.g. better-sqlite3)
-RUN apk add --no-cache libc6-compat python3 make g++
+# libc6-compat is needed by some Node.js native modules on Alpine
+RUN apk add --no-cache libc6-compat
 
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
@@ -24,7 +24,6 @@ RUN npm run build
 # Stage 2 — runner (final image)
 #   Following the official Prisma Docker guide:
 #   https://www.prisma.io/docs/guides/deployment/docker
-#   Copy the full node_modules so Prisma CLI has everything it needs at startup.
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:24-alpine AS runner
 
@@ -49,17 +48,12 @@ COPY --from=builder /app/package.json                              ./package.jso
 COPY --from=builder /app/prisma           ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-# ── Persistent data directory for SQLite ─────────────────────────────────────
-# Must be created before switching to the non-root user so chown works.
-# The named volume (docker-compose.yml) is mounted at /app/prisma/data.
-RUN mkdir -p /app/prisma/data && chown -R nextjs:nodejs /app/prisma/data
-
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# 1. Apply schema to the (possibly fresh) SQLite file.
+# 1. Apply schema to the (possibly fresh) PostgreSQL database.
 # 2. Start the Next.js standalone server.
 CMD ["sh", "-c", "npx prisma db push && node server.js"]

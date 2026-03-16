@@ -1,5 +1,26 @@
 services:
 
+  # ── PostgreSQL database ─────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: saife-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: saife
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - saife-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d saife"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Next.js application ─────────────────────────────────────────────────────
   saife:
     build:
       context: .
@@ -9,34 +30,30 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-    # ── Runtime secrets ─────────────────────────────────────────────────────
+    # ── Runtime secrets ───────────────────────────────────────────────────────
     # Never bake secrets into the image.  Provide them here or via a .env file
     # that docker-compose picks up automatically (see .env.example).
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      # SQLite path inside the container (matches the volume mount below)
-      DATABASE_URL: "file:/app/prisma/data/saife.db"
+      # PostgreSQL connection — uses the sibling "postgres" service defined above.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-saife_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/saife?schema=public"
       # API keys — set GEMINI_API_KEYS (comma-separated, recommended) for
       # round-robin key rotation, or GEMINI_API_KEY for a single key.
       GEMINI_API_KEYS: ${GEMINI_API_KEYS:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-
-    # ── Persistent SQLite storage ────────────────────────────────────────────
-    # The database file is stored in a named volume so it survives container
-    # rebuilds and restarts.
-    volumes:
-      - saife-db:/app/prisma/data
 
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/session/list || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
 volumes:
-  saife-db:
+  saife-pgdata:
     driver: local
-
