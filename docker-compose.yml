@@ -26,6 +26,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: saife:latest
+    pull_policy: build
     container_name: saife
     restart: unless-stopped
     ports:
@@ -40,10 +41,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      # PostgreSQL connection — uses the sibling "postgres" service defined above.
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-saife_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/saife?schema=public"
-      # API keys — set GEMINI_API_KEYS (comma-separated, recommended) for
-      # round-robin key rotation, or GEMINI_API_KEY for a single key.
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/saife?schema=public"
       GEMINI_API_KEYS: ${GEMINI_API_KEYS:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
 
