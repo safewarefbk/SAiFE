@@ -1,0 +1,34 @@
+project_id = "my-gcp-project-id"
+region     = "europe-west8"
+zone       = "europe-west8-b"
+
+# ─── IP Allowlist ────────────────────────────────────────────────────────────
+# Port 443 (HTTPS): only these IPs can reach the application.
+# Port 80 is completely closed.
+# Collect all participant IPs beforehand. /32 for a single host, /24 for a range.
+allowed_cidr_blocks = [
+  "203.0.113.0/24",      # Example: venue / institution network
+  "198.51.100.50/32",    # Example: individual with static IP
+  # Add one entry per participant IP or shared network range
+]
+
+# Port 22 (SSH): admin access only — YOUR IP only, never participant IPs.
+admin_cidr_blocks = [
+  # "your.ip.address/32"
+]
+
+# ─── VM Sizing ───────────────────────────────────────────────────────────────
+machine_type = "e2-standard-4"   # 4 vCPU, 16 GB RAM — sufficient for ~60 concurrent users
+disk_size_gb = 30
+
+# ─── Domain (optional) ──────────────────────────────────────────────────────
+# Leave empty to use Caddy's self-signed TLS on the raw IP.
+# Set to your domain (e.g. "saife.example.com") for automatic Let's Encrypt TLS.
+# If set, ensure your DNS A record points to the output vm_external_ip BEFORE apply.
+domain_name = ""
+
+# ─── Secrets are NOT here ────────────────────────────────────────────────────
+# postgres_user, postgres_password, gemini_api_keys, ssh_username, ssh_public_key_path
+# are all read from the project's .env file by setup.sh and passed to Terraform
+# as TF_VAR_* environment variables. Edit .env — not this file.
+
