@@ -157,4 +157,19 @@ export const invalidateCodeInDatabase = async (
     if (!response.ok) throw new Error('Failed to invalidate code in database');
 };
 
+/**
+ * Delete the code record for a node and clear its codeId in the nodes table.
+ */
+export const deleteCodeFromDatabase = async (
+    sessionIdentifier: string,
+    nodeId: string
+): Promise<void> => {
+    const response = await fetch('/api/session/delete-code', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ sessionIdentifier, nodeId })
+    });
+    if (!response.ok) throw new Error('Failed to delete code from database');
+};
+
 

@@ -31,6 +31,7 @@ import {
 } from "@/lib/utils";
 import { integrateSubgraph, convertTaskToGoal } from "@/lib/subgraph-integration";
 import * as SessionManager from "@/services/session-management";
+import { deleteCodeFromDatabase } from "@/services/session-management";
 import * as LLMOperations from "@/services/llm-operations";
 
 
@@ -62,7 +63,7 @@ const Flow = () => {
     const [sessionModalOpen, setSessionModalOpen] = useState(true);  // Show session modal on startup
     const diagram = useDiagram();
     const {setNodes, setEdges, getNodes, getEdges} = diagram.useReactFlow();
-    const {takeSnapshot, setExtraStateCallbacks} = useUndoRedo();
+    const {takeSnapshot, setExtraStateCallbacks, clearHistory} = useUndoRedo();
     const [isModalOpen, setIsModalOpen] = useState(false);  // Changed to false, will open after session selection
     const [originalDescription, setOriginalDescription] = useState<string>("");
     const [technicalRequirements, setTechnicalRequirements] = useState<string>("");
@@ -659,6 +660,47 @@ const Flow = () => {
         }
     };
 
+    /**
+     * Delete the generated code for the currently open node:
+     * - clears all local caches
+     * - updates node data so buttons revert to "Generate Code"
+     * - removes the code record from the DB
+     */
+    const handleDeleteCode = useCallback(async () => {
+        const nodeId = currentCodeCacheKey;
+        if (!nodeId) return;
+
+        // Clear the entire undo/redo history: after a DB deletion there is no
+        // safe state to restore (the code no longer exists in the database).
+        clearHistory();
+
+        // Clear local caches
+        setCodeCache(prev => { const m = new Map(prev); m.delete(nodeId); return m; });
+        setPromptCache(prev => { const m = new Map(prev); m.delete(nodeId); return m; });
+        setValidationCache(prev => { const m = new Map(prev); m.delete(nodeId); return m; });
+        setCodeIdCache(prev => { const m = new Map(prev); m.delete(nodeId); return m; });
+
+        // Update node data immediately
+        setNodes(nodes => nodes.map(n =>
+            n.id === nodeId
+                ? { ...n, data: { ...n.data, hasCode: false, codeId: null, isValidated: false } }
+                : n
+        ));
+
+        // Close the modal
+        setCodeModalOpen(false);
+        setGeneratedCode("");
+
+        // Persist deletion to DB
+        if (sessionIdentifier) {
+            try {
+                await deleteCodeFromDatabase(sessionIdentifier, nodeId);
+            } catch (e) {
+                console.error('Failed to delete code from database:', e);
+            }
+        }
+    }, [currentCodeCacheKey, sessionIdentifier, clearHistory, setNodes]);
+
     const EditableEdgeWrapper = useCallback(
         (props: EdgeProps) => {
             return <EditableEdge {...props} useDiagram={diagram}/>;
@@ -1004,6 +1046,7 @@ const Flow = () => {
                 isLoading={codeLoading}
                 isValidated={validationCache.get(currentCodeCacheKey) === true}
                 onValidate={handleValidateCode}
+                onDeleteCode={handleDeleteCode}
                 onCodeUpdate={async (newCode) => {
                     setGeneratedCode(newCode);
                     setCodeCache(prev => new Map(prev).set(currentCodeCacheKey, newCode));

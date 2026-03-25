@@ -329,6 +329,21 @@ export class DatabaseService {
     }
 
     /**
+     * Delete the code record for a specific node and clear the node's codeId foreign key.
+     */
+    async deleteCode(sessionId: string, nodeId: string): Promise<void> {
+        // Clear codeId on the node first (FK constraint)
+        await prisma.node.updateMany({
+            where: { sessionId, id: nodeId },
+            data: { codeId: null }
+        });
+        // Delete the code record (ignore if not found)
+        await prisma.code.deleteMany({
+            where: { sessionId, nodeId }
+        });
+    }
+
+    /**
      * Delete code records that are no longer linked to any node in the session.
      * Called during save to clean up after undo operations.
      */

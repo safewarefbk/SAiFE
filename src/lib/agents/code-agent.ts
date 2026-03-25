@@ -2,6 +2,27 @@ import {HumanMessage} from './agents';
 import {logTokenUsage} from '@/lib/utils';
 
 /**
+ * Strip markdown code fences from an LLM response.
+ * Removes only the opening fence line (e.g. ```python) and the closing fence line (```).
+ * Any ``` that appears *inside* the code is left untouched.
+ */
+function stripCodeFences(raw: string): string {
+    const lines = raw.trim().split('\n');
+
+    // Remove opening fence line if present (e.g. ```python, ```go, ```)
+    if (lines.length > 0 && /^```[\w]*$/.test(lines[0].trim())) {
+        lines.shift();
+    }
+
+    // Remove closing fence line if present
+    if (lines.length > 0 && lines[lines.length - 1].trim() === '```') {
+        lines.pop();
+    }
+
+    return lines.join('\n').trim();
+}
+
+/**
  * Agent for generating and modifying code.
  * Pure LLM interaction — no DB logic. All DB operations are the caller's responsibility.
  *
@@ -27,9 +48,10 @@ export class CodeAgent {
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
         const totalTokens = logTokenUsage('code/generate', lastMessage);
-        const code = typeof lastMessage.content === 'string'
+        const raw = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
+        const code = stripCodeFences(raw);
 
         return {code, prompt, totalTokens};
     }
@@ -54,9 +76,10 @@ export class CodeAgent {
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
         const totalTokens = logTokenUsage('code/regenerate', lastMessage);
-        const code = typeof lastMessage.content === 'string'
+        const raw = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
+        const code = stripCodeFences(raw);
 
         return {code, totalTokens};
     }
@@ -97,9 +120,10 @@ export class CodeAgent {
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
         const totalTokens = logTokenUsage('code/aggregate', lastMessage);
-        const code = typeof lastMessage.content === 'string'
+        const raw = typeof lastMessage.content === 'string'
             ? lastMessage.content
             : String(lastMessage.content);
+        const code = stripCodeFences(raw);
 
         return {code, prompt, totalTokens};
     }

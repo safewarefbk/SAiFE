@@ -1,7 +1,7 @@
 "use client";
 import React, {useState, useEffect} from "react";
 import {useTheme} from '@/hooks/useTheme';
-import {Edit, Check, X, RefreshCw} from 'react-feather';
+import {Edit, Check, X, RefreshCw, Trash2} from 'react-feather';
 import MonacoEditor from '@monaco-editor/react';
 
 interface CodeModalProps {
@@ -13,6 +13,7 @@ interface CodeModalProps {
     onCodeUpdate?: (newCode: string) => void;
     onRegenerate?: (additionalPrompt: string) => void;
     onValidate?: () => void;
+    onDeleteCode?: () => void;
     codeLanguage?: string;
 }
 
@@ -25,6 +26,7 @@ const CodeModal: React.FC<CodeModalProps> = ({
                                                  onCodeUpdate,
                                                  onRegenerate,
                                                  onValidate,
+                                                 onDeleteCode,
                                                  codeLanguage
                                              }) => {
     const themeHook = useTheme();
@@ -33,6 +35,7 @@ const CodeModal: React.FC<CodeModalProps> = ({
     const [editedCode, setEditedCode] = useState(code);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
     const [additionalPrompt, setAdditionalPrompt] = useState('');
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
     useEffect(() => {
         setEditedCode(code);
@@ -157,6 +160,17 @@ const CodeModal: React.FC<CodeModalProps> = ({
                                         Regenerate
                                     </button>
                                 )}
+                                {onDeleteCode && (
+                                    <button
+                                        onClick={() => setIsDeleteConfirmOpen(true)}
+                                        className="flex items-center gap-1 rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+                                        disabled={isLoading}
+                                        title="Delete generated code"
+                                    >
+                                        <Trash2 size={14}/>
+                                        Delete
+                                    </button>
+                                )}
                                 <button
                                     onClick={onClose}
                                     className="rounded-md bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -246,6 +260,39 @@ const CodeModal: React.FC<CodeModalProps> = ({
                             >
                                 <RefreshCw size={14}/>
                                 Regenerate Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {isDeleteConfirmOpen && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800 dark:text-white">
+                        <div className="mb-4 flex items-center gap-3">
+                            <Trash2 className="text-red-500" size={22}/>
+                            <h3 className="text-lg font-semibold">Delete Generated Code</h3>
+                        </div>
+                        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                            Are you sure you want to delete the generated code for this node?
+                            This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setIsDeleteConfirmOpen(false)}
+                                className="rounded-md bg-gray-200 px-4 py-2 text-sm hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsDeleteConfirmOpen(false);
+                                    onDeleteCode?.();
+                                }}
+                                className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                            >
+                                <Trash2 size={14}/>
+                                Delete
                             </button>
                         </div>
                     </div>

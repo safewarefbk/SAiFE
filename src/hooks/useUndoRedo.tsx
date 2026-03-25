@@ -36,6 +36,7 @@ interface UndoRedoStore {
     pushFuture: (item: HistoryItem) => void;
     popFuture: () => HistoryItem | undefined;
     clearFuture: () => void;
+    clearAll: () => void;
     setExtraCallbacks: (cb: ExtraStateCallbacks) => void;
 }
 
@@ -69,6 +70,8 @@ const useUndoRedoStore = create<UndoRedoStore>((set, get) => ({
     },
 
     clearFuture: () => set({future: []}),
+
+    clearAll: () => set({past: [], future: []}),
 
     setExtraCallbacks: (cb) => set({extraCallbacks: cb}),
 }));
@@ -107,6 +110,10 @@ export const useUndoRedo = ({
     const getSnapshotJson = useCallback(() => {
         return JSON.stringify({nodes: getNodes(), edges: getEdges()});
     }, [getNodes, getEdges]);
+
+    const clearHistory = useCallback(() => {
+        store.getState().clearAll();
+    }, [store]);
 
     const undo = useCallback(() => {
         const pastState = store.getState().popPast();
@@ -161,6 +168,7 @@ export const useUndoRedo = ({
         redo,
         takeSnapshot,
         getSnapshotJson,
+        clearHistory,
         canUndo: !canUndo,   // inverted to match original API (true = cannot undo)
         canRedo: !canRedo,
         setExtraStateCallbacks,
