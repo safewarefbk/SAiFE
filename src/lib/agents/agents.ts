@@ -46,11 +46,13 @@ const CODE_MODEL_SYSTEM_PROMPT_BASE =
  */
 function buildCodeSystemPrompt(projectDescription?: string, technicalRequirements?: string): string {
     let prompt = CODE_MODEL_SYSTEM_PROMPT_BASE;
-    if (projectDescription) {
-        prompt += `\n\nProject context: ${projectDescription}`;
-    }
+    // if (projectDescription) {
+    //     prompt += `\n\nProject context: ${projectDescription}`;
+    // }
     if (technicalRequirements) {
         prompt += `\n\nTechnical constraints (apply to every response): ${technicalRequirements}`;
+    } else {
+        prompt += `\n\nTechnical constraints (apply to every response): use Python`;
     }
     return prompt;
 }
