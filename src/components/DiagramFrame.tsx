@@ -35,7 +35,7 @@ import { deleteCodeFromDatabase } from "@/services/session-management";
 import * as LLMOperations from "@/services/llm-operations";
 
 
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {EditableEdge} from "./edges/EditableEdge";
 import {ConnectionLine} from "./edges/ConnectionLine";
 import savedDiagramJson from "../../public/examples/DiagramX.json";
@@ -701,15 +701,18 @@ const Flow = () => {
         }
     }, [currentCodeCacheKey, sessionIdentifier, clearHistory, setNodes]);
 
+    const diagramRef = useRef(diagram);
+    diagramRef.current = diagram;
+
     const EditableEdgeWrapper = useCallback(
         (props: EdgeProps) => {
-            return <EditableEdge {...props} useDiagram={diagram}/>;
+            return <EditableEdge {...props} useDiagram={diagramRef.current}/>;
         },
-        [diagram]
+        []
     );
-    const edgeTypes: EdgeTypes = {
+    const edgeTypes: EdgeTypes = useMemo(() => ({
         "editable-edge": EditableEdgeWrapper,
-    };
+    }), [EditableEdgeWrapper]);
 
     const handleGenerateCodeFromTask = useCallback((taskName: string, nodeId: string) => {
         setTimeout(() => {

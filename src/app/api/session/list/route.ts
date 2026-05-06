@@ -4,9 +4,10 @@ import { db } from "@/lib/db-service";
 /**
  * Get all session identifiers (for session selection dropdown)
  */
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        const sessionIdentifiers = await db.getAllSessionIdentifiers();
+        const sessionType = new URL(req.url).searchParams.get('sessionType') ?? undefined;
+        const sessionIdentifiers = await db.getAllSessionIdentifiers(sessionType);
         return NextResponse.json({ sessions: sessionIdentifiers });
 
     } catch (error: any) {

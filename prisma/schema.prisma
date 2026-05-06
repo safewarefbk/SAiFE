@@ -13,6 +13,7 @@ datasource db {
 model Session {
   id                    String   @id @default(cuid())
   sessionIdentifier     String   @unique
+  sessionType           String   @default("diagram") // "diagram" | "chat"
   projectDescription    String?  // Formal requirements — fed to the Diagram Generator LLM
   technicalRequirements String?  // Technical requirements — fed to the Code Generator LLM (includes language)
   hidden                Boolean  @default(false)
@@ -23,6 +24,7 @@ model Session {
   edges               Edge[]
   codes               Code[]
   diagramHistory      DiagramHistory[]
+  chatMessages        ChatMessage[]
 
   @@map("sessions")
 }
@@ -107,6 +109,21 @@ model Node {
   @@index([sessionId])
   @@index([codeId])
   @@map("nodes")
+}
+
+// ChatMessage table - stores agentic chat conversation turns per session
+model ChatMessage {
+  id          Int      @id @default(autoincrement())
+  sessionId   String
+  role        String   // "user" or "assistant"
+  content     String
+  totalTokens Int?     // Token usage (only for assistant messages)
+  createdAt   DateTime @default(now())
+
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
 }
 
 // Edge table - stores graph edge relationships with explicit columns

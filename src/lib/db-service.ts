@@ -74,9 +74,9 @@ export class DatabaseService {
     /**
      * Create a new session
      */
-    async createSession(sessionIdentifier: string): Promise<SessionData> {
+    async createSession(sessionIdentifier: string, sessionType: string = 'diagram'): Promise<SessionData> {
         const session = await prisma.session.create({
-            data: { sessionIdentifier }
+            data: { sessionIdentifier, sessionType }
         });
         return session;
     }
@@ -408,6 +408,35 @@ export class DatabaseService {
     }
 
     // =====================
+    // CHAT MESSAGE OPERATIONS
+    // =====================
+
+    /**
+     * Append a chat message (user or assistant) to the session.
+     */
+    async appendChatMessage(sessionId: string, role: 'user' | 'assistant', content: string, totalTokens?: number | null): Promise<void> {
+        await prisma.chatMessage.create({
+            data: {
+                sessionId,
+                role,
+                content,
+                totalTokens: totalTokens ?? null,
+            }
+        });
+    }
+
+    /**
+     * Get all chat messages for a session, ordered chronologically.
+     */
+    async getChatMessages(sessionId: string): Promise<Array<{ role: string; content: string; totalTokens: number | null; createdAt: Date }>> {
+        return prisma.chatMessage.findMany({
+            where: { sessionId },
+            orderBy: { createdAt: 'asc' },
+            select: { role: true, content: true, totalTokens: true, createdAt: true }
+        });
+    }
+
+    // =====================
     // BULK OPERATIONS
     // =====================
 
@@ -440,10 +469,11 @@ export class DatabaseService {
     /**
      * Get all session identifiers (for session selection)
      */
-    async getAllSessionIdentifiers(): Promise<string[]> {
+    async getAllSessionIdentifiers(sessionType?: string): Promise<string[]> {
         const sessions = await prisma.session.findMany({
             where: {
-                hidden: false
+                hidden: false,
+                ...(sessionType ? { sessionType } : {}),
             },
             select: {
                 sessionIdentifier: true

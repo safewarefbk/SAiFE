@@ -13,7 +13,7 @@ const SessionModal: React.FC<SessionModalProps> = ({ onSubmit }) => {
 
     useEffect(() => {
         // Load existing sessions
-        fetch('/api/session/list')
+        fetch('/api/session/list?sessionType=diagram')
             .then(res => {
                 if (!res.ok) throw new Error(`Server error: ${res.status}`);
                 return res.json();

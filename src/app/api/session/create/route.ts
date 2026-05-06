@@ -6,7 +6,7 @@ import { db } from "@/lib/db-service";
  */
 export async function POST(req: Request) {
     try {
-        const { sessionIdentifier } = await req.json();
+        const { sessionIdentifier, sessionType } = await req.json();
 
         if (!sessionIdentifier) {
             return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const session = await db.createSession(sessionIdentifier);
+        const session = await db.createSession(sessionIdentifier, sessionType);
 
         return NextResponse.json({ session });
 
