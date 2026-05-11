@@ -841,6 +841,70 @@ const Flow = () => {
         );
     }, [getNodes, getEdges, setNodes, setEdges, takeSnapshot]);
 
+    /**
+     * Delete a node and its descendants.
+     * After deletion, any circle (goal) node that has lost ALL its children
+     * is automatically converted back to a hexagon (task).
+     */
+    const handleDeleteNode = useCallback((nodeId: string) => {
+        takeSnapshot();
+
+        const nodes = getNodes();
+        const edges = getEdges();
+
+        // BFS downward through the subtree: edges flow child → parent, so
+        // edges with target === current identify the current node's children.
+        const findAllDescendants = (startId: string): string[] => {
+            const descendantIds: string[] = [];
+            const queue = [startId];
+            const visited = new Set<string>();
+
+            while (queue.length > 0) {
+                const current = queue.shift()!;
+                if (visited.has(current)) continue;
+                visited.add(current);
+
+                const childrenEdges = edges.filter(e => e.target === current);
+
+                for (const edge of childrenEdges) {
+                    if (!visited.has(edge.source)) {
+                        descendantIds.push(edge.source);
+                        queue.push(edge.source);
+                    }
+                }
+            }
+
+            return descendantIds;
+        };
+
+        const nodesToDelete = new Set([nodeId, ...findAllDescendants(nodeId)]);
+
+        const remainingNodes = nodes.filter(n => !nodesToDelete.has(n.id));
+        const remainingEdges = edges.filter(e => !nodesToDelete.has(e.source) && !nodesToDelete.has(e.target));
+
+        // Detect circle (goal) nodes that now have zero children → convert to hexagon (task)
+        const finalNodes = remainingNodes.map(node => {
+            if (node.data?.type !== 'circle') return node;
+
+            // A circle's children are nodes whose edges have target === circle's id
+            const hasChildren = remainingEdges.some(e => e.target === node.id);
+            if (hasChildren) return node;
+
+            // No children left → revert to hexagon, keep existing code if any
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    type: 'hexagon',
+                    collapsed: false,
+                },
+            };
+        });
+
+        setNodes(finalNodes);
+        setEdges(remainingEdges);
+    }, [getNodes, getEdges, setNodes, setEdges, takeSnapshot]);
+
     // Event listener for "Aggregate Code" button clicks on circle nodes
     useEffect(() => {
         const handleAggregateCodeEvent = (event: Event) => {
@@ -902,6 +966,21 @@ const Flow = () => {
             window.removeEventListener('toggleCollapseNode', handleToggleCollapseEvent);
         };
     }, [handleToggleCollapseNode]);
+
+    // Event listener for node deletion from ShapeNode toolbar
+    useEffect(() => {
+        const handleDeleteNodeEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ nodeId: string }>;
+            const { nodeId } = customEvent.detail;
+            handleDeleteNode(nodeId);
+        };
+
+        window.addEventListener('deleteNode', handleDeleteNodeEvent);
+
+        return () => {
+            window.removeEventListener('deleteNode', handleDeleteNodeEvent);
+        };
+    }, [handleDeleteNode]);
 
     // Keyboard shortcut: Ctrl+S / Cmd+S to save
     useEffect(() => {

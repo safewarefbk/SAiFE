@@ -36,7 +36,7 @@ const ShapeNode = ({id, selected, data}: any) => {
     const {type}: { type: ShapeType } = data as any;
     const isValidated = !!data.isValidated;
     const colors = getNodeColorConfig(data, isValidated);
-    const {setNodes, getNodes, getEdges, setEdges} = useReactFlow();
+    const {setNodes} = useReactFlow();
     const updateNodeInternals = useUpdateNodeInternals();
     const {takeSnapshot} = useUndoRedo();
     const {width, height} = useNodeDimensions(id);
@@ -83,54 +83,10 @@ const ShapeNode = ({id, selected, data}: any) => {
     };
 
     const onDeleteNode = () => {
-        takeSnapshot();
-
-        const edges = getEdges();
-        const nodes = getNodes();
-
-        // BFS to find all parent nodes
-        const findAllParents = (startNodeId: string): string[] => {
-            const children: string[] = [];
-            const queue: string[] = [startNodeId];
-            const visited = new Set<string>();
-
-            while (queue.length > 0) {
-                const currentNodeId = queue.shift()!;
-
-                if (visited.has(currentNodeId)) {
-                    continue;
-                }
-                visited.add(currentNodeId);
-
-                const parentEdges = edges.filter(edge => edge.target === currentNodeId);
-
-                parentEdges.forEach(edge => {
-                    const parentId = edge.source;
-                    if (!visited.has(parentId)) {
-                        children.push(parentId);
-                        queue.push(parentId);
-                    }
-                });
-            }
-
-            return children;
-        };
-
-        const nodesToDelete = [id, ...findAllParents(id)];
-
-        const edgesToKeep = edges.filter(edge =>
-            !nodesToDelete.includes(edge.source) && !nodesToDelete.includes(edge.target)
-        );
-
-        const remainingNodes = nodes.filter(node => !nodesToDelete.includes(node.id));
-
-        setNodes(remainingNodes);
-        setEdges(edgesToKeep);
-
-        setTimeout(() => {
-            const event = new CustomEvent('saveGraphToHistory');
-            window.dispatchEvent(event);
-        }, 200);
+        const event = new CustomEvent('deleteNode', {
+            detail: { nodeId: id }
+        });
+        window.dispatchEvent(event);
     };
 
     const onAggregateCode = () => {

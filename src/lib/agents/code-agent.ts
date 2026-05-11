@@ -42,7 +42,7 @@ export class CodeAgent {
         prompt: string;
         totalTokens: number | null;
     }> {
-        const prompt = `Implement code for the following task: ${taskName}. ` +
+        const prompt = `Implement code for the following task: '${taskName}'.\n` +
             `Only task-specific logic, short/focused, single file.`;
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
@@ -69,9 +69,9 @@ export class CodeAgent {
         currentCode: string,
         additionalPrompt: string,
     ): Promise<{ code: string; totalTokens: number | null }> {
-        const prompt = `Modify the code below as follows: ${additionalPrompt}` +
-            `\nOriginal task prompt: ${originalPrompt}` +
-            `\nCurrent code:\n${currentCode}`;
+        const prompt = `Modify the code below as follows: ${additionalPrompt}\n` +
+            `Original task prompt was: ${originalPrompt}\n` +
+            `Current code:\n${currentCode}`;
 
         const response: any = await model.invoke({messages: [new HumanMessage(prompt)]});
         const lastMessage = response.messages[response.messages.length - 1];
@@ -104,15 +104,15 @@ export class CodeAgent {
         let prompt: string;
 
         if (type === "sub-goal") {
-            prompt = `Goal: ${goal}\n` +
-                `Merge the following task implementations into a single cohesive module for this goal.\n` +
+            prompt = `Implement code for the goal: '${goal}' by merging the provided snippets below. \n` +
+                `Produce a single cohesive module.\n` +
                 `Resolve duplicates and conflicts. Keep only goal-relevant logic.\n` +
                 `Multiple files → separate with "// ===== FILE: name.ext ====="\n` +
                 `Snippets:\n${codeSnippets}`;
         } else { // type === "root-goal"
-            prompt = `Root goal: ${goal}\n` +
-                `Merge all snippets below into a complete, executable system.\n` +
-                `Add entry point, wiring, and any glue code needed to make it runnable.\n` +
+            prompt = `Implement code for the goal: '${goal}' by merging the provided snippets below. \n` +
+                `Produce a complete, executable system.\n` +
+                `Resolve duplicates and conflicts, add entry point and everything missing to make it runnable and deployable.\n` +
                 `Multiple files → separate with "// ===== FILE: name.ext ====="\n` +
                 `Snippets:\n${codeSnippets}`;
         }
