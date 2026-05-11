@@ -213,7 +213,8 @@ export default function ChatPage() {
         if (!trimmed || loading || !sessionId) return;
 
         const userMsg: ChatMessage = {role: "user", content: trimmed};
-        setMessages(prev => [...prev, userMsg]);
+        // Add the user message and an empty assistant placeholder (streaming=true)
+        setMessages(prev => [...prev, userMsg, {role: "assistant", content: "", streaming: true}]);
         setInput("");
         setLoading(true);
 
@@ -224,15 +225,57 @@ export default function ChatPage() {
                 body: JSON.stringify({message: trimmed, sessionId}),
             });
 
-            if (!res.ok) {
+            if (!res.ok || !res.body) {
                 const err = await res.json().catch(() => ({error: "Request failed"}));
-                setMessages(prev => [...prev, {role: "assistant", content: `⚠️ Error: ${err.error || `HTTP ${res.status}`}`}]);
-            } else {
-                const data = await res.json();
-                setMessages(prev => [...prev, {role: "assistant", content: data.reply}]);
+                setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = {
+                        role: "assistant",
+                        content: `⚠️ Error: ${err.error || `HTTP ${res.status}`}`,
+                        streaming: false,
+                    };
+                    return updated;
+                });
+                return;
             }
+
+            // Consume the text/plain stream chunk by chunk
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value, {stream: true});
+                setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    updated[updated.length - 1] = {
+                        ...last,
+                        content: last.content + text,
+                        streaming: true,
+                    };
+                    return updated;
+                });
+            }
+
+            // Mark streaming done so parseBlocks / Monaco editor render
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {...updated[updated.length - 1], streaming: false};
+                return updated;
+            });
+
         } catch (e: any) {
-            setMessages(prev => [...prev, {role: "assistant", content: `⚠️ Error: ${e.message}`}]);
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                    role: "assistant",
+                    content: `⚠️ Error: ${e.message}`,
+                    streaming: false,
+                };
+                return updated;
+            });
         } finally {
             setLoading(false);
             inputRef.current?.focus();
@@ -297,30 +340,38 @@ export default function ChatPage() {
                                 : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
                         }`}>
                             {msg.role === "assistant" ? (
-                                parseBlocks(msg.content).map((block, j) =>
-                                    block.type === "code" ? (
-                                        <div key={j} className="my-2 rounded overflow-hidden border border-zinc-300 dark:border-zinc-600">
-                                            <div className="text-xs px-3 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
-                                                {block.lang}
+                                msg.streaming ? (
+                                    // While streaming: plain text so we avoid repeated Monaco mount/unmount
+                                    <p className="whitespace-pre-wrap">{msg.content}
+                                        <span className="inline-block w-2 h-4 ml-0.5 bg-zinc-400 dark:bg-zinc-500 animate-pulse align-middle"/>
+                                    </p>
+                                ) : (
+                                    // Stream complete: render code blocks with Monaco
+                                    parseBlocks(msg.content).map((block, j) =>
+                                        block.type === "code" ? (
+                                            <div key={j} className="my-2 rounded overflow-hidden border border-zinc-300 dark:border-zinc-600">
+                                                <div className="text-xs px-3 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
+                                                    {block.lang}
+                                                </div>
+                                                <Editor
+                                                    height={Math.min(400, block.value.split("\n").length * 20 + 20)}
+                                                    language={block.lang}
+                                                    value={block.value}
+                                                    theme="vs-dark"
+                                                    options={{
+                                                        readOnly: true,
+                                                        minimap: {enabled: false},
+                                                        scrollBeyondLastLine: false,
+                                                        fontSize: 13,
+                                                        lineNumbers: "on",
+                                                        wordWrap: "on",
+                                                    }}
+                                                />
                                             </div>
-                                            <Editor
-                                                height={Math.min(400, block.value.split("\n").length * 20 + 20)}
-                                                language={block.lang}
-                                                value={block.value}
-                                                theme="vs-dark"
-                                                options={{
-                                                    readOnly: true,
-                                                    minimap: {enabled: false},
-                                                    scrollBeyondLastLine: false,
-                                                    fontSize: 13,
-                                                    lineNumbers: "on",
-                                                    wordWrap: "on",
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <p key={j}>{block.value}</p>
-                                    ),
+                                        ) : (
+                                            <p key={j}>{block.value}</p>
+                                        ),
+                                    )
                                 )
                             ) : (
                                 msg.content
@@ -328,14 +379,6 @@ export default function ChatPage() {
                         </div>
                     </div>
                 ))}
-
-                {loading && (
-                    <div className="flex justify-start">
-                        <div className="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-500 animate-pulse">
-                            Thinking…
-                        </div>
-                    </div>
-                )}
 
                 <div ref={messagesEndRef}/>
             </div>
