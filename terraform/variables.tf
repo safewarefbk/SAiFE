@@ -33,15 +33,15 @@ variable "admin_cidr_blocks" {
 
 # ─── VM Sizing ───────────────────────────────────────────────────────────────
 variable "machine_type" {
-  description = "GCE machine type — e2-standard-4 (4 vCPU, 16 GB) handles ~60 concurrent users"
+  description = "GCE machine type — n2-standard-8 (8 vCPU, 32 GB)"
   type        = string
-  default     = "e2-standard-4"
+  default     = "n2-standard-8"
 }
 
 variable "disk_size_gb" {
   description = "Boot disk size in GB"
   type        = number
-  default     = 30
+  default     = 60
 }
 
 variable "disk_type" {
