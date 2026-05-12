@@ -10,12 +10,10 @@ The setup runs the full application stack (Next.js app + PostgreSQL + Caddy reve
 
 Install the following on your local machine:
 
-| Tool | Install |
-|---|---|
-| [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.6 | `brew install terraform` or official installer |
-| [gcloud CLI](https://cloud.google.com/sdk/docs/install) | `brew install --cask google-cloud-sdk` |
-| Docker (to build the image) | [docker.com](https://www.docker.com) |
-
+Tool:
+1. [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.6
+2. [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+3. Docker (to build the image)
 ---
 
 ## Files

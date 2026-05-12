@@ -6,6 +6,7 @@ import Editor from "@monaco-editor/react";
 interface ChatMessage {
     role: "user" | "assistant";
     content: string;
+    streaming?: boolean;
 }
 
 /**
