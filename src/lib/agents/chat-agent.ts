@@ -15,9 +15,7 @@ import {SystemMessage} from '@langchain/core/messages';
 import {getGeminiFlashModel} from './models-pool';
 
 const CHAT_SYSTEM_PROMPT =
-    `You are an expert software engineer. The user will describe a software project and you must help them build it. ` +
-    `When the user asks you to implement something, produce the full code — not summaries or outlines. ` +
-    `Apply secure-by-design principles.`;
+    `You are an expert software engineer and architect.`;
 
 export interface ChatTurn {
     role: 'user' | 'assistant';
