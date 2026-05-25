@@ -39,6 +39,8 @@ export TF_VAR_postgres_password="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not s
 export TF_VAR_gemini_api_keys="${GEMINI_API_KEYS:-${GEMINI_API_KEY:?GEMINI_API_KEY or GEMINI_API_KEYS is not set in .env}}"
 export TF_VAR_ssh_username="${SSH_USER:?SSH_USER is not set in .env}"
 export TF_VAR_ssh_public_key_path="${SSH_KEY:?SSH_KEY is not set in .env}.pub"
+export TF_VAR_basic_auth_user="${BASIC_AUTH_USER:-}"
+export TF_VAR_basic_auth_password="${BASIC_AUTH_PASSWORD:-}"
 
 # ─── Configuration ─────────────────────────────────────────────────────────
 TARBALL="${TARBALL:-saife-latest.tar.gz}"
@@ -46,6 +48,12 @@ APP_DIR="/home/saife-app"
 
 echo "=== SAiFE Deployment Setup ==="
 echo ""
+
+# ─── Auto-enable provisioning egress for this deploy ─────────────────────────
+# Docker Hub + apt need open egress during provisioning.
+# setup.sh will lock it back to false automatically at the end.
+TFVARS="$(git rev-parse --show-toplevel)/terraform/terraform.tfvars"
+sed -i 's/enable_provisioning_egress\s*=\s*false/enable_provisioning_egress = true/' "$TFVARS"
 
 # ─── Step 1: Build Docker image and save to tarball ────────────────────────
 # Done BEFORE terraform apply so the tarball is ready to SCP immediately.
@@ -126,6 +134,18 @@ ssh -i "$SSH_KEY" \
      docker compose up -d && \
      docker compose ps"
 
+# Restart fail2ban so it picks up the live Caddy access.log and
+# inserts iptables rules into the now-active DOCKER-USER chain.
+echo "[5/5] Restarting fail2ban (Docker containers are up)..."
+ssh -i "$SSH_KEY" \
+    -o StrictHostKeyChecking=no \
+    "$SSH_USER@$VM_IP" \
+    "sudo systemctl restart fail2ban && \
+     for i in \$(seq 1 12); do \
+       sudo fail2ban-client status caddy-auth 2>/dev/null && break; \
+       echo '  waiting for fail2ban socket...' && sleep 5; \
+     done"
+
 echo ""
 echo "=== Deployment complete ==="
 terraform output
@@ -133,3 +153,18 @@ echo ""
 APP_URL="$(terraform output -raw application_url)"
 echo "Application URL: $APP_URL"
 echo "(Accept the self-signed certificate warning on first visit)"
+
+# ─── Auto-disable provisioning egress ────────────────────────────────────────
+# Now that everything is running, lock down outbound traffic to Google APIs only.
+# We patch terraform.tfvars in-place and apply — no manual step required.
+TFVARS="$(git rev-parse --show-toplevel)/terraform/terraform.tfvars"
+if grep -q 'enable_provisioning_egress\s*=\s*true' "$TFVARS"; then
+  echo ""
+  echo "=== Locking down egress (enable_provisioning_egress → false) ==="
+  sed -i 's/enable_provisioning_egress\s*=\s*true/enable_provisioning_egress = false/' "$TFVARS"
+  terraform apply -input=false -auto-approve
+  echo "Egress locked. VM can now only reach Google APIs (Gemini)."
+else
+  echo "(Provisioning egress already disabled — nothing to do.)"
+fi
+

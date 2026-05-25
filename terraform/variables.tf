@@ -33,15 +33,15 @@ variable "admin_cidr_blocks" {
 
 # ─── VM Sizing ───────────────────────────────────────────────────────────────
 variable "machine_type" {
-  description = "GCE machine type — n2-standard-8 (8 vCPU, 32 GB)"
+  description = "GCE machine type — e2-medium (2 vCPU, 4 GB) for small teams, n2-standard-8 for demos"
   type        = string
-  default     = "n2-standard-8"
+  default     = "e2-medium"
 }
 
 variable "disk_size_gb" {
   description = "Boot disk size in GB"
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "disk_type" {
@@ -92,6 +92,20 @@ variable "gemini_api_keys" {
   sensitive   = true
 }
 
+# ─── Basic Auth (optional) ───────────────────────────────────────────────────
+variable "basic_auth_user" {
+  description = "Username for Caddy basic auth (leave empty to disable auth)"
+  type        = string
+  default     = ""
+}
+
+variable "basic_auth_password" {
+  description = "Password for Caddy basic auth (plain text — hashed at deploy time)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ─── DNS (optional) ─────────────────────────────────────────────────────────
 variable "domain_name" {
   description = "Domain name for TLS certificate (leave empty to skip Caddy HTTPS)"
@@ -105,3 +119,36 @@ variable "environment" {
   type        = string
   default     = "production"
 }
+
+# ─── Egress Control ──────────────────────────────────────────────────────────
+variable "enable_provisioning_egress" {
+  description = "Allow unrestricted HTTPS egress for Docker Hub + apt. Set to false after first deploy to lock down."
+  type        = bool
+  default     = true
+}
+
+# ─── Instance Schedule (optional) ────────────────────────────────────────────
+variable "enable_instance_schedule" {
+  description = "Enable automatic start/stop schedule for the VM"
+  type        = bool
+  default     = false
+}
+
+variable "schedule_start_cron" {
+  description = "Cron expression for VM auto-start (e.g. '0 8 * * 1-5' = 8 AM weekdays)"
+  type        = string
+  default     = "0 8 * * 1-5"
+}
+
+variable "schedule_stop_cron" {
+  description = "Cron expression for VM auto-stop (e.g. '0 19 * * 1-5' = 8 PM weekdays)"
+  type        = string
+  default     = "0 19 * * 1-5"
+}
+
+variable "schedule_timezone" {
+  description = "Timezone for the instance schedule"
+  type        = string
+  default     = "Europe/Rome"
+}
+

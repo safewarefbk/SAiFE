@@ -31,3 +31,9 @@ resource "google_project_service" "os_login" {
   service            = "oslogin.googleapis.com"
   disable_on_destroy = false
 }
+
+resource "google_project_service" "dns" {
+  service            = "dns.googleapis.com"
+  disable_on_destroy = false
+}
+

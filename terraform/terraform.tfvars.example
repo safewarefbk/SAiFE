@@ -18,14 +18,30 @@ admin_cidr_blocks = [
 ]
 
 # ─── VM Sizing ───────────────────────────────────────────────────────────────
-machine_type = "e2-standard-4"   # 4 vCPU, 16 GB RAM — sufficient for ~60 concurrent users
-disk_size_gb = 30
+machine_type = "e2-medium"       # 2 vCPU, 4 GB RAM — sufficient for 3-4 users
+disk_size_gb = 15
+
+# Boot disk OS image. Alternatives (uncomment to switch):
+#   Ubuntu 22.04 LTS:  "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+#   Debian 12:         "projects/debian-cloud/global/images/family/debian-12"
+os_image = "projects/debian-cloud/global/images/family/debian-12"
+
+# ─── Egress Control ──────────────────────────────────────────────────────────
+# setup.sh sets this to true automatically during deploy, then back to false
+# once everything is running. Do NOT change this manually.
+enable_provisioning_egress = false
+
+
+# ─── Instance Schedule (auto start/stop) ─────────────────────────────────────
+# Set to true to auto-shutdown at night and restart in the morning.
+enable_instance_schedule = true
+schedule_start_cron      = "0 8 * * 1-5"    # 8:00 AM weekdays
+schedule_stop_cron       = "0 19 * * 1-5"   # 8:00 PM weekdays
+schedule_timezone         = "Europe/Rome"
+
 
 # ─── Domain (optional) ──────────────────────────────────────────────────────
-# Leave empty to use Caddy's self-signed TLS on the raw IP.
-# Set to your domain (e.g. "saife.example.com") for automatic Let's Encrypt TLS.
-# If set, ensure your DNS A record points to the output vm_external_ip BEFORE apply.
-domain_name = ""
+domain_name = ""   # Set to e.g. "saife.example.com" for auto-TLS via Let's Encrypt
 
 # ─── Secrets are NOT here ────────────────────────────────────────────────────
 # postgres_user, postgres_password, gemini_api_keys, ssh_username, ssh_public_key_path

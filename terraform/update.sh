@@ -25,6 +25,8 @@ export TF_VAR_postgres_password="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not s
 export TF_VAR_gemini_api_keys="${GEMINI_API_KEYS:-${GEMINI_API_KEY:?GEMINI_API_KEY or GEMINI_API_KEYS is not set in .env}}"
 export TF_VAR_ssh_username="${SSH_USER:?SSH_USER is not set in .env}"
 export TF_VAR_ssh_public_key_path="${SSH_KEY:?SSH_KEY is not set in .env}.pub"
+export TF_VAR_basic_auth_user="${BASIC_AUTH_USER:-}"
+export TF_VAR_basic_auth_password="${BASIC_AUTH_PASSWORD:-}"
 
 # ─── GCP credentials check ──────────────────────────────────────────────────
 if ! gcloud auth application-default print-access-token &>/dev/null; then
