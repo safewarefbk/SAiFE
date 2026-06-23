@@ -1,4 +1,3 @@
-import {RefObject} from "react";
 import {
     EdgeLabelRenderer,
     type EdgeProps,
@@ -7,7 +6,6 @@ import {
 import {getLinearPath} from "./path/straight";
 import {useDiagram} from "@/hooks/useDiagram";
 import useUndoRedo from "@/hooks/useUndoRedo";
-import useDraggableEdgeLabel from "@/hooks/useDraggableEdgeLabel";
 import EdgeToolbar from "../../EdgeToolbar/EdgeToolbar";
 
 interface EditableEdgeProps extends EdgeProps {
@@ -37,15 +35,6 @@ export function EditableEdge({
 
     // Position toolbar near the center of the edge with a small offset below
     const toolbarY = midY + 20; // Small offset below the center, similar to NodeToolbar offset of 10
-
-    const [edgePathRef, draggableEdgeLabelRef] = useDraggableEdgeLabel(
-        sourceX,
-        sourceY,
-        targetX,
-        targetY,
-        id,
-        data.labelPosition as number
-    );
 
     let pathPoints = [
         sourceOrigin,
@@ -90,29 +79,24 @@ export function EditableEdge({
                     strokeWidth: 4,
                     stroke: color,
                 }}
-                ref={edgePathRef}
                 fill="transparent"
             />
             <EdgeLabelRenderer>
-                <div
-                    ref={draggableEdgeLabelRef}
-                    style={{
-                        position: "absolute",
-                        transform: `translate(-50%, -50%)`,
-                        pointerEvents: "all",
-                        zIndex: 1000,
-                    }}
-                    className="nodrag nopan"
-                >
-                    {data.title ? (
-                        <foreignObject x="10" y="10" width="100" height="100">
-                            <div
-                                ref={draggableEdgeLabelRef as RefObject<HTMLInputElement>}
-                                className={`bottom-full p-2 text-center text-sm dark:bg-black bg-white rounded-md`}
-                            >{`${data.title}`}</div>
-                        </foreignObject>
-                    ) : null}
-                </div>
+                {data.title ? (
+                    <div
+                        style={{
+                            position: "absolute",
+                            left: midX,
+                            top: midY,
+                            transform: "translate(-50%, -50%)",
+                            pointerEvents: "all",
+                            zIndex: 1000,
+                        }}
+                        className="nodrag nopan p-2 text-center text-sm dark:bg-black bg-white rounded-md"
+                    >
+                        {`${data.title}`}
+                    </div>
+                ) : null}
             </EdgeLabelRenderer>
 
             {/* Render EdgeToolbar when this edge is selected */}

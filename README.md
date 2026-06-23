@@ -108,7 +108,7 @@ prisma/
 
 ### Option A — Local (Node.js / npm required)
 
-**Prerequisites:** Node.js ≥ 18, npm, a running PostgreSQL instance.
+**Prerequisites:** Node.js ≥ 20.9, npm, a running PostgreSQL instance.
 
 ```bash
 # 1. Clone the repository
@@ -123,13 +123,32 @@ cp .env.example .env
 npm install
 
 # 4. Push the database schema
-npx prisma db push
+npm run db:push        # or: npx prisma db push
 
 # 5. Start the development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+### Building & verifying
+
+The project does not ship an automated test suite. To verify a build locally:
+
+```bash
+# Type-check the codebase (no emit)
+npx tsc --noEmit
+
+# Produce an optimized production build
+npm run build
+
+# Run the production server
+npm run start
+```
+
+A successful `npm run build` is the primary signal that the project is healthy.
 
 ---
 
@@ -166,3 +185,22 @@ To stop and remove all data: `docker compose down -v`
 | `DATABASE_URL` | Local only | Full connection string (computed from above in Docker) |
 | `GEMINI_API_KEY` | ✓ (or KEYS) | Single Gemini API key |
 | `GEMINI_API_KEYS` | Optional | Comma-separated keys for load distribution (recommended for demos) |
+
+---
+
+## License
+
+Copyright 2026 SaFEWaRe.
+
+This project is licensed under the **Apache License, Version 2.0**. See the
+[LICENSE](./LICENSE) file for the full text.
+
+It includes third-party components whose required attributions are listed in the
+[NOTICE](./NOTICE) file (notably Font Awesome Free and caniuse-lite under
+CC BY 4.0, and libvips under LGPL-3.0 via Next.js image handling).
+
+### Contributing
+
+By submitting a contribution to this project, you agree that your contribution
+is licensed under the Apache License 2.0, in accordance with Section 5 of the
+License.

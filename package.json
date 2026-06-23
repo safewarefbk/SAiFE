@@ -2,6 +2,8 @@
   "name": "lifecycle-diagram-maker",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
+  "author": "SaFEWaRe",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -29,7 +31,6 @@
     "@types/pg": "^8.18.0",
     "@xyflow/react": "^12.3.2",
     "clsx": "^2.1.1",
-    "gsap": "^3.12.5",
     "langchain": "1.2.25",
     "lodash": "^4.17.23",
     "next": "^16.2.4",

@@ -1,0 +1,62 @@
+SAiFE
+Copyright 2026 SaFEWaRe
+
+This product includes software developed by SaFEWaRe.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this software except in compliance with the License. You may obtain a
+copy of the License in the LICENSE file or at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+================================================================================
+Third-party attributions
+================================================================================
+
+This software depends on third-party components. The following notices are
+provided to comply with the attribution requirements of their respective
+licenses. The full list of dependencies and their licenses can be regenerated
+with `npx license-checker`.
+
+--------------------------------------------------------------------------------
+Font Awesome Free
+--------------------------------------------------------------------------------
+Icons: Creative Commons Attribution 4.0 International (CC BY 4.0)
+Fonts: SIL Open Font License 1.1
+Code:  MIT License
+Copyright (c) Fonticons, Inc.
+https://fontawesome.com
+https://creativecommons.org/licenses/by/4.0/
+
+--------------------------------------------------------------------------------
+caniuse-lite
+--------------------------------------------------------------------------------
+Browser support data (used at build time by Browserslist).
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+Copyright (c) caniuse.com contributors.
+https://github.com/browserslist/caniuse-lite
+https://creativecommons.org/licenses/by/4.0/
+
+--------------------------------------------------------------------------------
+libvips (via @img/sharp-libvips, dependency of sharp / Next.js image handling)
+--------------------------------------------------------------------------------
+Prebuilt libvips binaries are licensed under the GNU Lesser General Public
+License, version 3 (LGPL-3.0-or-later). libvips is used as a separate,
+dynamically loaded library and may be replaced by the user in accordance with
+the terms of the LGPL.
+https://github.com/libvips/libvips
+
+--------------------------------------------------------------------------------
+DOMPurify
+--------------------------------------------------------------------------------
+Dual licensed under the Apache License 2.0 or the Mozilla Public License 2.0.
+This distribution uses it under the terms of the Apache License 2.0.
+Copyright (c) Mario Heiderich and contributors.
+https://github.com/cure53/DOMPurify
+
+================================================================================
+The remaining dependencies are distributed under permissive licenses
+(MIT, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD, Apache-2.0 and similar), which
+require retention of their copyright and permission notices. Those notices are
+contained within the respective packages under node_modules.
+================================================================================
